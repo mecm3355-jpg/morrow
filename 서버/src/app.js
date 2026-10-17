@@ -3,6 +3,7 @@ const cors = require('cors');
 
 const healthRouter = require('./routes/health.routes');
 const userRouter = require('./routes/user.routes');
+const connectDatabase = require('./config/db');
 
 const app = express();
 const defaultClientOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
@@ -41,6 +42,15 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.use(async (req, res, next) => {
+  try {
+    await connectDatabase();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.get('/', (req, res) => {
   res.json({ message: 'Shopping mall API server' });
