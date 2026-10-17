@@ -6,7 +6,7 @@ import heroImage from '../assets/hero.png'
 import { clearStoredAuth, getStoredAuth, saveStoredAuth } from '../utils/authStorage'
 import './HomePage.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 function HomePage() {
   const location = useLocation()

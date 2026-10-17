@@ -10,7 +10,18 @@ const environmentClientOrigins = (process.env.CLIENT_URLS ?? '')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean);
-const allowedOrigins = new Set([...defaultClientOrigins, ...environmentClientOrigins]);
+const vercelClientOrigins = [
+  process.env.VERCEL_URL,
+  process.env.VERCEL_BRANCH_URL,
+  process.env.VERCEL_PROJECT_PRODUCTION_URL,
+]
+  .filter(Boolean)
+  .map((host) => `https://${host}`);
+const allowedOrigins = new Set([
+  ...defaultClientOrigins,
+  ...environmentClientOrigins,
+  ...vercelClientOrigins,
+]);
 
 const corsOptions = {
   origin(origin, callback) {

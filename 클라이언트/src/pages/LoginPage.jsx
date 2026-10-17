@@ -5,7 +5,7 @@ import useLoginForm from '../hooks/useLoginForm'
 import { clearStoredAuth, getStoredAuth } from '../utils/authStorage'
 import './LoginPage.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 function LoginPage() {
   const navigate = useNavigate()
