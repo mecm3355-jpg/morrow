@@ -1,0 +1,17 @@
+# Dependencies and build output
+**/node_modules/
+**/dist/
+
+# Environment variables
+**/.env
+**/.env.*
+!**/.env.example
+
+# Local capture artifacts
+/.tmp-*/
+/home-actual.png
+/login-actual.png
+
+# Operating system files
+.DS_Store
+Thumbs.db

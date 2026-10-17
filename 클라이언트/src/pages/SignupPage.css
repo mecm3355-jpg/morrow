@@ -1,0 +1,237 @@
+.signup-page {
+  background:
+    radial-gradient(circle at 12% 10%, rgb(181 193 222 / 24%), transparent 28%),
+    radial-gradient(circle at 87% 88%, rgb(155 224 246 / 26%), transparent 30%),
+    #f1f4f8;
+}
+
+.signup-main {
+  width: min(760px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 14px 0 70px;
+}
+
+.back-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px 10px;
+  padding: 7px 10px;
+  color: #606a81;
+  font-size: 13px;
+  font-weight: 600;
+  transition: 180ms ease;
+}
+
+.back-button:hover {
+  color: var(--purple);
+}
+
+.signup-card {
+  padding: 50px 58px 38px;
+  border: 1px solid rgb(217 223 235 / 85%);
+  border-radius: 34px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow: 0 26px 60px rgb(45 57 89 / 9%);
+}
+
+.signup-heading {
+  margin-bottom: 34px;
+}
+
+.step-label {
+  display: block;
+  margin: 0 0 13px;
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.signup-heading h1 {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.25;
+  letter-spacing: -0.06em;
+}
+
+.signup-heading p {
+  margin: 9px 0 0;
+  color: #60708a;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.field-group {
+  min-width: 0;
+  margin-bottom: 21px;
+}
+
+.field-group label {
+  display: flex;
+  justify-content: space-between;
+  margin: 0 0 9px;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.field-group label span {
+  color: #9ba3b5;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.field-group input,
+.field-group select {
+  width: 100%;
+  height: 51px;
+  padding: 0 16px;
+  outline: none;
+  border: 1px solid #dce2ec;
+  border-radius: 14px;
+  color: var(--ink);
+  background: #f8f9fc;
+  font-size: 14px;
+  transition: 160ms ease;
+}
+
+.field-group input::placeholder {
+  color: #9aa9c5;
+}
+
+.field-group input:focus,
+.field-group select:focus {
+  border-color: var(--purple);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgb(81 56 245 / 9%);
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field input {
+  padding-right: 67px;
+}
+
+.password-field button {
+  position: absolute;
+  top: 50%;
+  right: 11px;
+  padding: 6px 7px;
+  border: 0;
+  color: #727c92;
+  background: transparent;
+  font-size: 11px;
+  font-weight: 700;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.agreement {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  margin-top: 4px;
+  color: #647089;
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: pointer;
+}
+
+.agreement input {
+  width: 17px;
+  height: 17px;
+  margin: 1px 0 0;
+  accent-color: var(--purple);
+}
+
+.agreement button,
+.login-prompt a {
+  padding: 0;
+  border: 0;
+  color: var(--purple);
+  background: transparent;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.form-message {
+  margin: 15px 0 0;
+  padding: 11px 13px;
+  border-radius: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.form-message.error {
+  color: #b33143;
+  background: #fff0f2;
+}
+
+.form-message.success {
+  color: #166747;
+  background: #eaf9f2;
+}
+
+.submit-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 53px;
+  margin-top: 22px;
+  border: 0;
+  border-radius: 14px;
+  color: #fff;
+  background: var(--purple);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 12px 26px rgb(81 56 245 / 25%);
+  transition: 180ms ease;
+}
+
+.submit-button svg {
+  width: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.submit-button:hover:not(:disabled) {
+  background: var(--purple-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px rgb(81 56 245 / 32%);
+}
+
+.submit-button:disabled {
+  cursor: wait;
+  opacity: 0.68;
+}
+
+.login-prompt {
+  margin: 28px 0 0;
+  text-align: center;
+  color: #6a748b;
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .signup-main {
+    width: min(100% - 20px, 760px);
+    padding-top: 8px;
+  }
+
+  .signup-card {
+    padding: 38px 24px 32px;
+    border-radius: 28px;
+  }
+
+  .signup-heading h1 {
+    font-size: 29px;
+  }
+}

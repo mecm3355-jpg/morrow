@@ -1,0 +1,32 @@
+:root {
+  --ink: #101427;
+  --muted: #677089;
+  --line: #dfe4ef;
+  --purple: #5138f5;
+  --purple-dark: #3f27dd;
+}
+
+.page {
+  min-height: 100vh;
+}
+
+.page-loading {
+  display: grid;
+  min-height: 100vh;
+  place-items: center;
+  color: var(--purple);
+  background: #f3f5f9;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
