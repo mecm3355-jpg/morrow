@@ -24,7 +24,7 @@ const initialForm = {
 const navigation = [
   { icon: 'dashboard', label: '대시보드', path: '/admin' },
   { icon: 'order', label: '주문 관리' },
-  { icon: 'product', label: '상품 관리', active: true },
+  { icon: 'product', label: '상품 관리', path: '/admin/products', active: true },
   { icon: 'user', label: '고객 관리' },
   { icon: 'megaphone', label: '프로모션' },
   { icon: 'message', label: '리뷰 · 문의' },
@@ -234,8 +234,11 @@ function ProductCreatePage() {
 
       <aside className={`product-create-sidebar${sidebarOpen ? ' is-open' : ''}`}>
         <div className="product-create-brand">
-          <span>m</span><strong>morrow.</strong><small>ADMIN</small>
-          <button type="button" aria-label="메뉴 닫기" onClick={() => setSidebarOpen(false)}><Icon name="close" /></button>
+          <button className="product-create-brand-link" type="button" onClick={() => navigate('/admin')} aria-label="관리자 대시보드로 이동">
+            <span>m</span><strong>morrow.</strong>
+          </button>
+          <small>ADMIN</small>
+          <button className="product-create-sidebar-close" type="button" aria-label="메뉴 닫기" onClick={() => setSidebarOpen(false)}><Icon name="close" /></button>
         </div>
         <nav aria-label="관리자 메뉴">
           {navigation.map((item) => (
@@ -264,7 +267,7 @@ function ProductCreatePage() {
         </header>
 
         <main className="product-create-main">
-          <div className="product-create-breadcrumb"><button type="button" onClick={() => navigate('/admin')}>상품 관리</button><span>/</span><strong>상품 등록</strong></div>
+          <div className="product-create-breadcrumb"><button type="button" onClick={() => navigate('/admin/products')}>상품 관리</button><span>/</span><strong>상품 등록</strong></div>
           <header className="product-create-heading"><h1>상품 등록</h1><p>새로운 상품 정보를 입력해 주세요.</p></header>
 
           {message.text && <div className={`product-create-message ${message.type}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</div>}
@@ -319,7 +322,7 @@ function ProductCreatePage() {
         </main>
 
         <footer className="product-create-actions">
-          <button type="button" onClick={() => navigate('/admin')}>취소</button>
+          <button type="button" onClick={() => navigate('/admin/products')}>취소</button>
           <button type="submit" form="product-create-form" disabled={isSubmitting}>{isSubmitting ? '등록 중...' : '상품 등록'}</button>
         </footer>
       </div>

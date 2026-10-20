@@ -55,7 +55,17 @@
   font-weight: 800;
 }
 
-.admin-brand > strong {
+.admin-brand-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  background: transparent;
+}
+
+.admin-brand-link > strong {
   font-size: 18px;
   font-weight: 800;
   letter-spacing: -0.5px;

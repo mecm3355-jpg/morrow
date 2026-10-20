@@ -2,6 +2,7 @@ const express = require('express');
 const {
   createProduct,
   getProducts,
+  getAllProducts,
   getProductById,
   updateProduct,
   deleteProduct,
@@ -14,6 +15,7 @@ const router = express.Router();
 
 router.post('/', authenticateUser, authorizeAdmin, createProduct);
 router.get('/', getProducts);
+router.get('/all', getAllProducts);
 router.get('/:id', getProductById);
 router.put('/:id', authenticateUser, authorizeAdmin, updateProduct);
 router.patch('/:id', authenticateUser, authorizeAdmin, updateProduct);

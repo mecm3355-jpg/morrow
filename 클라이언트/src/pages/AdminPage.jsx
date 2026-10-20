@@ -5,7 +5,7 @@ import './AdminPage.css'
 const navigation = [
   { icon: 'grid', label: '대시보드' },
   { icon: 'cart', label: '주문 관리', badge: '12' },
-  { icon: 'boxes', label: '상품 관리' },
+  { icon: 'boxes', label: '상품 관리', path: '/admin/products' },
   { icon: 'users', label: '고객 관리' },
   { icon: 'tag', label: '프로모션' },
   { icon: 'message', label: '리뷰 · 문의', badge: '4' },
@@ -104,6 +104,11 @@ function AdminPage() {
     window.setTimeout(() => setNotice(''), 2200)
   }
 
+  const goToStorefront = () => {
+    setSidebarOpen(false)
+    navigate('/')
+  }
+
   return (
     <div className="admin-page">
       <button className="admin-mobile-menu" type="button" aria-label="메뉴 열기" onClick={() => setSidebarOpen(true)}><Icon name="menu" /></button>
@@ -111,18 +116,21 @@ function AdminPage() {
 
       <aside className={`admin-sidebar${sidebarOpen ? ' is-open' : ''}`}>
         <div className="admin-brand">
-          <span className="admin-brand-mark">M</span><strong>morrow.</strong><span className="admin-badge">ADMIN</span>
+          <button className="admin-brand-link" type="button" onClick={() => navigate('/admin')} aria-label="관리자 대시보드로 이동">
+            <span className="admin-brand-mark">M</span><strong>morrow.</strong>
+          </button>
+          <span className="admin-badge">ADMIN</span>
           <button className="admin-sidebar-close" type="button" aria-label="메뉴 닫기" onClick={() => setSidebarOpen(false)}><Icon name="close" /></button>
         </div>
         <nav className="admin-nav" aria-label="관리자 메뉴">
           {navigation.map((item) => (
-            <button className={`admin-nav-item${activeNav === item.label ? ' is-active' : ''}`} key={item.label} type="button" onClick={() => { setActiveNav(item.label); setSidebarOpen(false) }}>
+            <button className={`admin-nav-item${activeNav === item.label ? ' is-active' : ''}`} key={item.label} type="button" onClick={() => { if (item.path) navigate(item.path); else setActiveNav(item.label); setSidebarOpen(false) }}>
               <Icon name={item.icon} /><span>{item.label}</span>{item.badge && <span className="admin-nav-badge">{item.badge}</span>}
             </button>
           ))}
         </nav>
         <div className="admin-sidebar-footer">
-          <button type="button" onClick={() => handleAction('쇼핑몰 홈으로 이동합니다.')}><Icon name="store" /><span>쇼핑몰 바로가기</span></button>
+          <button type="button" onClick={goToStorefront}><Icon name="store" /><span>쇼핑몰 바로가기</span></button>
           <button type="button" onClick={() => setActiveNav('설정')}><Icon name="settings" /><span>설정</span></button>
         </div>
       </aside>

@@ -4,6 +4,7 @@ const Product = require('../models/product.model');
 
 const productFields = ['sku', 'name', 'price', 'category', 'image', 'description'];
 const requiredProductFields = ['sku', 'name', 'price', 'category', 'image'];
+const PRODUCTS_PER_PAGE = 2;
 
 function pickProductFields(body = {}) {
   return productFields.reduce((productData, field) => {
@@ -28,6 +29,10 @@ function isValidProductId(id) {
   return mongoose.isObjectIdOrHexString(id);
 }
 
+function escapeRegularExpression(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 async function createProduct(req, res) {
   const productData = pickProductFields(req.body);
   const missingFields = findMissingFields(productData);
@@ -44,7 +49,69 @@ async function createProduct(req, res) {
 }
 
 async function getProducts(req, res) {
-  const products = await Product.find().sort({ createdAt: -1 });
+  const requestedPage = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+  const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+  const category = typeof req.query.category === 'string' ? req.query.category.trim() : '';
+  const filter = {};
+
+  if (search) {
+    const searchExpression = new RegExp(escapeRegularExpression(search), 'i');
+    filter.$or = [
+      { name: searchExpression },
+      { sku: searchExpression },
+    ];
+  }
+
+  if (category && category !== '전체') {
+    filter.category = category;
+  }
+
+  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const [total, totalProducts, categories, priceSummary, recentProducts] = await Promise.all([
+    Product.countDocuments(filter),
+    Product.countDocuments(),
+    Product.distinct('category'),
+    Product.aggregate([
+      { $group: { _id: null, averagePrice: { $avg: '$price' } } },
+    ]),
+    Product.countDocuments({ createdAt: { $gte: sevenDaysAgo } }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / PRODUCTS_PER_PAGE));
+  const page = Math.min(requestedPage, totalPages);
+  const skip = (page - 1) * PRODUCTS_PER_PAGE;
+  const products = await Product.find(filter)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(PRODUCTS_PER_PAGE);
+
+  return res.status(200).json({
+    products,
+    pagination: {
+      page,
+      pageSize: PRODUCTS_PER_PAGE,
+      total,
+      totalPages,
+      hasPreviousPage: page > 1,
+      hasNextPage: page < totalPages,
+    },
+    summary: {
+      totalProducts,
+      categoryCount: categories.length,
+      averagePrice: Math.round(priceSummary[0]?.averagePrice || 0),
+      recentProducts,
+    },
+    filters: {
+      categories: categories.sort((first, second) => first.localeCompare(second, 'ko')),
+    },
+  });
+}
+
+async function getAllProducts(req, res) {
+  const products = await Product.find()
+    .sort({ createdAt: -1 })
+    .lean();
+
   return res.status(200).json(products);
 }
 
@@ -117,6 +184,7 @@ function handleProductError(error, req, res, next) {
 module.exports = {
   createProduct,
   getProducts,
+  getAllProducts,
   getProductById,
   updateProduct,
   deleteProduct,

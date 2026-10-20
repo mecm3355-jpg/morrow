@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import ArrowIcon from '../components/ArrowIcon'
 import Header from '../components/Header'
@@ -18,21 +18,18 @@ const categories = [
   { name: '향기', description: '장면을 기억하게 하는 향', image: 'candle' },
 ]
 
-const products = [
-  { brand: 'Morrow Object', name: '포그 세라믹 머그', price: '32,000원', image: 'cup', badge: 'BEST' },
-  { brand: 'Loom Atelier', name: '모닝 글로우 테이블 램프', price: '78,000원', image: 'lamp', badge: 'NEW' },
-  { brand: 'Night Archive', name: '바이올렛 글라스 캔들 220g', price: '39,000원', image: 'candle', badge: 'ONLY' },
-  { brand: 'Paper Note', name: '패브릭 노트 & 브라스 펜', price: '42,000원', image: 'notebook', badge: 'NEW' },
-  { brand: 'Atelier N°7', name: '오브제 퍼퓸 50ml', price: '59,000원', image: 'perfume', badge: 'BEST' },
-  { brand: 'Soft Form', name: '리브드 코튼 타월', price: '28,000원', image: 'towel', badge: 'NEW' },
-  { brand: 'Morrow Object', name: '포그 세라믹 머그 세트', price: '61,000원', image: 'cup', badge: 'SET' },
-  { brand: 'Loom Atelier', name: '글로우 미니 램프', price: '64,000원', image: 'lamp', badge: 'ONLY' },
-]
-
-const newArrivals = products.slice(2, 5)
 const MemoizedHeader = memo(Header)
 
-function ProductImage({ type, alt }) {
+function formatPrice(value) {
+  const price = Number(value)
+  return Number.isFinite(price) ? `${price.toLocaleString('ko-KR')}원` : '-'
+}
+
+function ProductImage({ type, src, alt }) {
+  if (src) {
+    return <img className="product-image product-image--remote" src={src} alt={alt} loading="lazy" decoding="async" />
+  }
+
   return <div className={`product-image product-image--${type}`} role="img" aria-label={alt} />
 }
 
@@ -40,18 +37,18 @@ function ProductCard({ product, compact = false }) {
   return (
     <article className={`product-card ${compact ? 'product-card--compact' : ''}`}>
       <div className="product-card-visual">
-        <span className="product-badge">{product.badge}</span>
+        <span className="product-badge">{product.badge || product.category || 'ITEM'}</span>
         <button className="wish-button" type="button" aria-label={`${product.name} 찜하기`}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6l1.2 1.2L12 21l7.6-7.6 1.2-1.2a5.4 5.4 0 0 0 0-7.6Z" />
           </svg>
         </button>
-        <ProductImage type={product.image} alt={product.name} />
+        <ProductImage type={product.imageType} src={product.image} alt={product.name} />
       </div>
       <div className="product-card-copy">
-        <p>{product.brand}</p>
+        <p>{product.brand || product.category || 'Morrow Selection'}</p>
         <h3>{product.name}</h3>
-        <strong>{product.price}</strong>
+        <strong>{formatPrice(product.price)}</strong>
         <span className="product-delivery">무료배송 · 내일 출발</span>
       </div>
     </article>
@@ -129,6 +126,55 @@ function HomeSession() {
 }
 
 function HomePage() {
+  const [products, setProducts] = useState([])
+  const [productsLoading, setProductsLoading] = useState(true)
+  const [productsError, setProductsError] = useState('')
+  const [productsRequest, setProductsRequest] = useState(0)
+  const [activeCategory, setActiveCategory] = useState('전체')
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    async function loadProducts() {
+      try {
+        setProductsLoading(true)
+        setProductsError('')
+        const response = await fetch(`${API_URL}/api/products/all`, {
+          headers: { Accept: 'application/json' },
+          signal: controller.signal,
+        })
+        const data = await response.json().catch(() => [])
+
+        if (!response.ok) {
+          throw new Error(data.message || '상품을 불러오지 못했습니다.')
+        }
+
+        setProducts(Array.isArray(data) ? data : [])
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setProductsError(error.message || '서버에 연결할 수 없습니다.')
+        }
+      } finally {
+        if (!controller.signal.aborted) setProductsLoading(false)
+      }
+    }
+
+    loadProducts()
+    return () => controller.abort()
+  }, [productsRequest])
+
+  const productCategories = useMemo(
+    () => ['전체', ...new Set(products.map((product) => product.category).filter(Boolean))],
+    [products],
+  )
+  const visibleProducts = useMemo(
+    () => activeCategory === '전체'
+      ? products
+      : products.filter((product) => product.category === activeCategory),
+    [activeCategory, products],
+  )
+  const newArrivals = products.slice(0, 3)
+
   return (
     <div className="page home-page" style={PRODUCT_SHEET_STYLE}>
       <HomeSession />
@@ -179,10 +225,20 @@ function HomePage() {
           <div className="section-heading products-heading">
             <div><p className="section-kicker">BEST ITEMS</p><h2 id="products-title">지금 가장 사랑받는 물건</h2></div>
             <div className="product-filters" aria-label="상품 필터">
-              <button className="active" type="button">전체</button><button type="button">리빙</button><button type="button">키친</button><button type="button">패브릭</button>
+              {productCategories.map((category) => (
+                <button className={activeCategory === category ? 'active' : ''} type="button" key={category} onClick={() => setActiveCategory(category)}>{category}</button>
+              ))}
             </div>
           </div>
-          <div className="product-grid">{products.map((product) => <ProductCard product={product} key={product.name} />)}</div>
+          {productsLoading ? (
+            <div className="home-products-state" role="status"><span className="home-products-spinner" /><strong>상품을 불러오고 있습니다.</strong></div>
+          ) : productsError ? (
+            <div className="home-products-state is-error" role="alert"><strong>{productsError}</strong><button type="button" onClick={() => setProductsRequest((request) => request + 1)}>다시 시도</button></div>
+          ) : visibleProducts.length ? (
+            <div className="product-grid">{visibleProducts.map((product) => <ProductCard product={product} key={product._id || product.sku} />)}</div>
+          ) : (
+            <div className="home-products-state"><strong>등록된 상품이 없습니다.</strong></div>
+          )}
         </section>
 
         <section className="brand-story" id="brand-story" aria-labelledby="brand-story-title">
@@ -205,7 +261,11 @@ function HomePage() {
             <div><p className="section-kicker">NEW ARRIVALS</p><h2 id="arrivals-title">이번 주 새로 들어온 물건</h2></div>
             <a href="#products">전체 보기 <span aria-hidden="true">↗</span></a>
           </div>
-          <div className="arrival-grid">{newArrivals.map((product) => <ProductCard compact product={product} key={product.name} />)}</div>
+          {newArrivals.length ? (
+            <div className="arrival-grid">{newArrivals.map((product) => <ProductCard compact product={product} key={product._id || product.sku} />)}</div>
+          ) : (
+            <div className="home-products-state"><strong>{productsLoading ? '신상품을 불러오고 있습니다.' : '새로 등록된 상품이 없습니다.'}</strong></div>
+          )}
         </section>
 
         <section className="newsletter" aria-labelledby="newsletter-title">

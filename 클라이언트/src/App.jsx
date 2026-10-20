@@ -6,6 +6,7 @@ const HomePage = lazy(() => import('./pages/HomePage'))
 const SignupPage = lazy(() => import('./pages/SignupPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
+const ProductListPage = lazy(() => import('./pages/ProductListPage'))
 const ProductCreatePage = lazy(() => import('./pages/ProductCreatePage'))
 
 function App() {
@@ -17,6 +18,7 @@ function App() {
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/products" element={<ProductListPage />} />
           <Route path="/admin/products/new" element={<ProductCreatePage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
