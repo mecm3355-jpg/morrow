@@ -316,6 +316,19 @@
   background: #eefbf4;
 }
 
+.product-create-message.loading {
+  border-color: #d8d2ff;
+  color: #5540cf;
+  background: #f4f2ff;
+}
+
+.product-create-field input:disabled,
+.product-create-field select:disabled,
+.product-create-field textarea:disabled {
+  cursor: wait;
+  opacity: .7;
+}
+
 .product-create-form {
   display: grid;
   grid-template-columns: minmax(480px, 1.08fr) minmax(420px, .95fr);

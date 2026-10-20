@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import Header from '../components/Header'
 import useLoginForm from '../hooks/useLoginForm'
 import { clearStoredAuth, getStoredAuth } from '../utils/authStorage'
@@ -9,6 +9,7 @@ const API_URL = import.meta.env.VITE_API_URL || ''
 
 function LoginPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [storedAuth] = useState(getStoredAuth)
   const [isCheckingAuth, setIsCheckingAuth] = useState(Boolean(storedAuth))
   const {
@@ -86,6 +87,8 @@ function LoginPage() {
                 <h1 id="login-title">로그인</h1>
                 <p>다시 만나서 반가워요. 계정에 로그인해 보세요.</p>
               </header>
+
+              {location.state?.message ? <p className="login-message info" role="status">{location.state.message}</p> : null}
 
               <form className="login-form" onSubmit={handleSubmit} noValidate>
                 <div className="login-field">

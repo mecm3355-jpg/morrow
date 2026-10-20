@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { getStoredAuth } from '../utils/authStorage'
 import './ProductCreatePage.css'
 
@@ -94,9 +94,13 @@ function Icon({ name, size = 20 }) {
 
 function ProductCreatePage() {
   const navigate = useNavigate()
+  const { productId } = useParams()
+  const isEditing = Boolean(productId)
   const [auth] = useState(getStoredAuth)
   const [form, setForm] = useState(initialForm)
   const [fileName, setFileName] = useState('')
+  const [isLoadingProduct, setIsLoadingProduct] = useState(isEditing)
+  const [didProductLoadFail, setDidProductLoadFail] = useState(false)
   const [isWidgetLoading, setIsWidgetLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -106,6 +110,44 @@ function ProductCreatePage() {
   const currentUser = auth?.user
   const isAdmin = typeof currentUser?.user_type === 'string'
     && currentUser.user_type.trim().toLowerCase() === 'admin'
+
+  useEffect(() => {
+    if (!productId) return undefined
+
+    const controller = new AbortController()
+
+    async function loadProduct() {
+      try {
+        const response = await fetch(`${API_URL}/api/products/${productId}`, {
+          headers: { Accept: 'application/json' },
+          signal: controller.signal,
+        })
+        const product = await response.json().catch(() => ({}))
+        if (!response.ok) throw new Error(product.message || '상품 정보를 불러오지 못했습니다.')
+
+        setForm({
+          name: product.name || '',
+          sku: product.sku || '',
+          price: Number.isFinite(Number(product.price)) ? String(product.price) : '',
+          category: product.category || '',
+          image: product.image || '',
+          description: product.description || '',
+        })
+        setDidProductLoadFail(false)
+        setFileName(product.image ? '현재 등록된 상품 이미지' : '')
+      } catch (error) {
+        if (error.name !== 'AbortError') {
+          setDidProductLoadFail(true)
+          setMessage({ type: 'error', text: error.message || '서버에 연결할 수 없습니다.' })
+        }
+      } finally {
+        if (!controller.signal.aborted) setIsLoadingProduct(false)
+      }
+    }
+
+    loadProduct()
+    return () => controller.abort()
+  }, [productId])
 
   function handleChange(event) {
     const { name, value } = event.target
@@ -180,12 +222,17 @@ function ProductCreatePage() {
     setMessage({ type: '', text: '' })
 
     if (!auth?.token) {
-      setMessage({ type: 'error', text: '상품을 등록하려면 먼저 로그인해 주세요.' })
+      setMessage({ type: 'error', text: `상품을 ${isEditing ? '수정' : '등록'}하려면 먼저 로그인해 주세요.` })
+      return
+    }
+
+    if (didProductLoadFail) {
+      setMessage({ type: 'error', text: '상품 정보를 다시 불러온 뒤 수정해 주세요.' })
       return
     }
 
     if (!isAdmin) {
-      setMessage({ type: 'error', text: '관리자만 상품을 등록할 수 있습니다.' })
+      setMessage({ type: 'error', text: `관리자만 상품을 ${isEditing ? '수정' : '등록'}할 수 있습니다.` })
       return
     }
 
@@ -196,8 +243,8 @@ function ProductCreatePage() {
 
     try {
       setIsSubmitting(true)
-      const response = await fetch(`${API_URL}/api/products`, {
-        method: 'POST',
+      const response = await fetch(`${API_URL}/api/products${isEditing ? `/${productId}` : ''}`, {
+        method: isEditing ? 'PATCH' : 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `${auth.tokenType || 'Bearer'} ${auth.token}`,
@@ -214,12 +261,13 @@ function ProductCreatePage() {
       const data = await response.json().catch(() => ({}))
 
       if (!response.ok) {
-        throw new Error(data.message || '상품 등록에 실패했습니다.')
+        throw new Error(data.message || `상품 ${isEditing ? '수정' : '등록'}에 실패했습니다.`)
       }
 
-      setMessage({ type: 'success', text: `${data.name || form.name} 상품을 등록했습니다.` })
-      setForm(initialForm)
-      setFileName('')
+      navigate('/admin/products', {
+        replace: true,
+        state: { notice: `${data.name || form.name} 상품을 ${isEditing ? '수정' : '등록'}했습니다.` },
+      })
     } catch (error) {
       setMessage({ type: 'error', text: error.message || '서버에 연결할 수 없습니다.' })
     } finally {
@@ -257,7 +305,7 @@ function ProductCreatePage() {
         <header className="product-create-topbar">
           <label>
             <Icon name="search" size={19} />
-            <input type="search" placeholder="상품, 주문, 고객을 검색해 보세요." />
+            <input type="search" placeholder="상품명 또는 SKU를 검색해 보세요." />
           </label>
           <div className="product-create-account">
             <button type="button" aria-label="알림"><Icon name="bell" size={19} /><i /></button>
@@ -267,44 +315,45 @@ function ProductCreatePage() {
         </header>
 
         <main className="product-create-main">
-          <div className="product-create-breadcrumb"><button type="button" onClick={() => navigate('/admin/products')}>상품 관리</button><span>/</span><strong>상품 등록</strong></div>
-          <header className="product-create-heading"><h1>상품 등록</h1><p>새로운 상품 정보를 입력해 주세요.</p></header>
+          <div className="product-create-breadcrumb"><button type="button" onClick={() => navigate('/admin/products')}>상품 관리</button><span>/</span><strong>{isEditing ? '상품 수정' : '상품 등록'}</strong></div>
+          <header className="product-create-heading"><h1>{isEditing ? '상품 수정' : '상품 등록'}</h1><p>{isEditing ? '등록된 상품 정보를 확인하고 필요한 내용을 변경해 주세요.' : '새로운 상품 정보를 입력해 주세요.'}</p></header>
 
           {message.text && <div className={`product-create-message ${message.type}`} role={message.type === 'error' ? 'alert' : 'status'}>{message.text}</div>}
+          {isLoadingProduct ? <div className="product-create-message loading" role="status">상품 정보를 불러오고 있습니다.</div> : null}
 
           <form id="product-create-form" className="product-create-form" onSubmit={handleSubmit}>
             <section className="product-create-card product-info-card">
               <h2>기본 정보</h2>
               <div className="product-create-field">
                 <label htmlFor="product-name">상품 이름 <b>*</b></label>
-                <input id="product-name" name="name" value={form.name} onChange={handleChange} placeholder="상품 이름을 입력해 주세요." maxLength="100" required />
+                <input id="product-name" name="name" value={form.name} onChange={handleChange} placeholder="상품 이름을 입력해 주세요." maxLength="100" disabled={isLoadingProduct} required />
               </div>
               <div className="product-create-field">
                 <label htmlFor="product-sku">SKU <b>*</b></label>
-                <input id="product-sku" name="sku" value={form.sku} onChange={handleChange} placeholder="예: TOP-001" autoCapitalize="characters" required />
+                <input id="product-sku" name="sku" value={form.sku} onChange={handleChange} placeholder="예: TOP-001" autoCapitalize="characters" disabled={isLoadingProduct} required />
                 <small>SKU는 상품마다 고유해야 하며 영문과 숫자 조합을 권장합니다.</small>
               </div>
               <div className="product-create-field">
                 <label htmlFor="product-price">상품 가격 <b>*</b></label>
-                <div className="product-price-input"><input id="product-price" name="price" type="number" value={form.price} onChange={handleChange} placeholder="0" min="0" step="1" required /><span>원</span></div>
+                <div className="product-price-input"><input id="product-price" name="price" type="number" value={form.price} onChange={handleChange} placeholder="0" min="0" step="1" disabled={isLoadingProduct} required /><span>원</span></div>
               </div>
               <div className="product-create-field">
                 <label htmlFor="product-category">카테고리 <b>*</b></label>
-                <select id="product-category" name="category" value={form.category} onChange={handleChange} required>
+                <select id="product-category" name="category" value={form.category} onChange={handleChange} disabled={isLoadingProduct} required>
                   <option value="">카테고리를 선택해 주세요.</option>
                   {categories.map((category) => <option value={category} key={category}>{category}</option>)}
                 </select>
               </div>
               <div className="product-create-field">
                 <label htmlFor="product-description">상품 설명 <span>(선택)</span></label>
-                <textarea id="product-description" name="description" value={form.description} onChange={handleChange} placeholder="상품에 대한 자세한 설명을 입력해 주세요." maxLength="2000" rows="5" />
+                <textarea id="product-description" name="description" value={form.description} onChange={handleChange} placeholder="상품에 대한 자세한 설명을 입력해 주세요." maxLength="2000" rows="5" disabled={isLoadingProduct} />
                 <small className="product-description-count">{form.description.length} / 2,000</small>
               </div>
             </section>
 
             <section className="product-create-card product-image-card">
               <h2>상품 이미지</h2>
-              <button className="product-image-dropzone" type="button" onClick={openUploadWidget} disabled={isWidgetLoading}>
+              <button className="product-image-dropzone" type="button" onClick={openUploadWidget} disabled={isWidgetLoading || isLoadingProduct}>
                 <span className="product-upload-icon"><Icon name="upload" size={48} /><i><Icon name="plus" size={18} /></i></span>
                 <strong>{isWidgetLoading ? 'Cloudinary 위젯을 불러오는 중...' : 'Cloudinary 위젯으로 이미지 업로드'}</strong>
                 <small>JPG, PNG, WEBP · 최대 10MB</small>
@@ -312,7 +361,7 @@ function ProductCreatePage() {
 
               {form.image ? (
                 <div className="product-image-preview">
-                  <img src={form.image} alt="등록할 상품 미리보기" />
+                  <img src={form.image} alt={`${isEditing ? '수정할' : '등록할'} 상품 미리보기`} />
                   <div><strong>{fileName}</strong><small>대표 이미지</small></div>
                   <button type="button" onClick={removeImage}>삭제</button>
                 </div>
@@ -323,7 +372,7 @@ function ProductCreatePage() {
 
         <footer className="product-create-actions">
           <button type="button" onClick={() => navigate('/admin/products')}>취소</button>
-          <button type="submit" form="product-create-form" disabled={isSubmitting}>{isSubmitting ? '등록 중...' : '상품 등록'}</button>
+          <button type="submit" form="product-create-form" disabled={isSubmitting || isLoadingProduct || didProductLoadFail}>{isSubmitting ? `${isEditing ? '수정' : '등록'} 중...` : `상품 ${isEditing ? '수정' : '등록'}`}</button>
         </footer>
       </div>
     </div>

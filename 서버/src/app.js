@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
 
 const healthRouter = require('./routes/health.routes');
 const productRouter = require('./routes/product.routes');
@@ -7,6 +8,7 @@ const userRouter = require('./routes/user.routes');
 const connectDatabase = require('./config/db');
 
 const app = express();
+const isDevelopment = app.get('env') === 'development';
 const defaultClientOrigins = ['http://localhost:5173', 'http://127.0.0.1:5173'];
 const environmentClientOrigins = (process.env.CLIENT_URLS ?? '')
   .split(',')
@@ -40,9 +42,18 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
+app.disable('x-powered-by');
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      upgradeInsecureRequests: isDevelopment ? null : [],
+    },
+  },
+  strictTransportSecurity: isDevelopment ? false : undefined,
+}));
 app.use(cors(corsOptions));
-app.use(express.json({ limit: '4mb' }));
-app.use(express.urlencoded({ extended: true, limit: '4mb' }));
+app.use(express.json({ limit: '256kb' }));
+app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
 app.use(async (req, res, next) => {
   try {
@@ -67,8 +78,13 @@ app.use((req, res) => {
 
 app.use((err, req, res, next) => {
   console.error(err);
-  res.status(err.status ?? 500).json({
-    message: err.message ?? '서버 내부 오류가 발생했습니다.',
+  const status = err.status ?? 500;
+  const shouldHideDetails = status >= 500 && app.get('env') === 'production';
+
+  res.status(status).json({
+    message: shouldHideDetails
+      ? '서버 내부 오류가 발생했습니다.'
+      : err.message ?? '서버 내부 오류가 발생했습니다.',
   });
 });
 

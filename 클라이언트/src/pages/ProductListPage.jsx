@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { getStoredAuth } from '../utils/authStorage'
+import { getPaginationItems } from '../utils/pagination'
 import './ProductListPage.css'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -50,6 +51,8 @@ const iconPaths = {
   chevronLeft: <path d="m15 18-6-6 6-6" />,
   chevronRight: <path d="m9 18 6-6-6-6" />,
   eye: <><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z" /><circle cx="12" cy="12" r="2.5" /></>,
+  edit: <><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4Z" /></>,
+  trash: <><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5" /></>,
   refresh: <><path d="M20 7v5h-5" /><path d="M19 12a7 7 0 1 1-2-5" /></>,
 }
 
@@ -86,6 +89,7 @@ function ProductImage({ src, name, large = false }) {
 
 function ProductListPage() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [auth] = useState(getStoredAuth)
   const [products, setProducts] = useState([])
   const [pagination, setPagination] = useState(INITIAL_PAGINATION)
@@ -98,9 +102,22 @@ function ProductListPage() {
   const [keyword, setKeyword] = useState('')
   const [category, setCategory] = useState('전체')
   const [currentPage, setCurrentPage] = useState(1)
+  const [requestVersion, setRequestVersion] = useState(0)
   const [selectedProduct, setSelectedProduct] = useState(null)
+  const [deletingProductId, setDeletingProductId] = useState('')
+  const [notice, setNotice] = useState(() => location.state?.notice || '')
+  const modalRef = useRef(null)
+  const modalCloseButtonRef = useRef(null)
+  const productDetailTriggerRef = useRef(null)
 
   const currentUser = auth?.user
+
+  useEffect(() => {
+    if (!notice) return undefined
+    if (location.state?.notice) navigate(location.pathname, { replace: true, state: null })
+    const timer = window.setTimeout(() => setNotice(''), 3200)
+    return () => window.clearTimeout(timer)
+  }, [location.pathname, location.state, navigate, notice])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -138,10 +155,43 @@ function ProductListPage() {
 
     loadProducts()
     return () => controller.abort()
-  }, [currentPage, keyword, category])
+  }, [category, currentPage, keyword, requestVersion])
 
   const totalPages = pagination.totalPages || 1
   const visiblePage = pagination.page || currentPage
+  const paginationItems = useMemo(
+    () => getPaginationItems(visiblePage, totalPages),
+    [totalPages, visiblePage],
+  )
+
+  useEffect(() => {
+    if (!selectedProduct) return undefined
+
+    modalCloseButtonRef.current?.focus()
+
+    function handleModalKeyDown(event) {
+      if (event.key === 'Escape') setSelectedProduct(null)
+      if (event.key === 'Tab') {
+        const focusableElements = [...(modalRef.current?.querySelectorAll('button:not(:disabled)') || [])]
+        if (!focusableElements.length) return
+        const firstElement = focusableElements[0]
+        const lastElement = focusableElements.at(-1)
+        if (event.shiftKey && document.activeElement === firstElement) {
+          event.preventDefault()
+          lastElement.focus()
+        } else if (!event.shiftKey && document.activeElement === lastElement) {
+          event.preventDefault()
+          firstElement.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleModalKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleModalKeyDown)
+      productDetailTriggerRef.current?.focus()
+    }
+  }, [selectedProduct])
 
   function handleSearch(event) {
     event.preventDefault()
@@ -154,6 +204,33 @@ function ProductListPage() {
     setKeyword('')
     setCategory('전체')
     setCurrentPage(1)
+  }
+
+  async function deleteProduct(product) {
+    if (!window.confirm(`“${product.name}” 상품을 삭제할까요? 삭제한 상품은 복구할 수 없습니다.`)) return
+
+    try {
+      setDeletingProductId(product._id)
+      setError('')
+      const response = await fetch(`${API_URL}/api/products/${product._id}`, {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+          Authorization: `${auth?.tokenType || 'Bearer'} ${auth?.token || ''}`,
+        },
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || '상품 삭제에 실패했습니다.')
+
+      setSelectedProduct(null)
+      setNotice(`${data.name || product.name} 상품을 삭제했습니다.`)
+      if (products.length === 1 && currentPage > 1) setCurrentPage((page) => page - 1)
+      else setRequestVersion((version) => version + 1)
+    } catch (requestError) {
+      setError(requestError.message || '서버에 연결할 수 없습니다.')
+    } finally {
+      setDeletingProductId('')
+    }
   }
 
   return (
@@ -186,7 +263,7 @@ function ProductListPage() {
         <header className="product-list-topbar">
           <form onSubmit={handleSearch}>
             <Icon name="search" size={19} />
-            <input type="search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="상품, 주문, 고객을 검색해 보세요." aria-label="통합 검색" />
+            <input type="search" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="상품명 또는 SKU를 검색해 보세요." aria-label="상품명 또는 SKU 검색" />
           </form>
           <div className="product-list-account">
             <button type="button" aria-label="알림"><Icon name="bell" size={19} /><i /></button>
@@ -201,6 +278,8 @@ function ProductListPage() {
             <div><h1>상품 관리</h1><p>등록된 상품을 조회하고 상품 정보를 확인해 보세요.</p></div>
             <button type="button" onClick={() => navigate('/admin/products/new')}><Icon name="plus" size={18} /> 상품 등록</button>
           </header>
+
+          {notice ? <div className="product-list-notice" role="status">{notice}</div> : null}
 
           <section className="product-list-stats" aria-label="상품 요약">
             <article><span className="is-neutral"><Icon name="box" /></span><div><small>전체 상품</small><strong>{summary.totalProducts.toLocaleString('ko-KR')}</strong></div></article>
@@ -226,7 +305,7 @@ function ProductListPage() {
               <button className="product-list-reset-button" type="button" onClick={resetFilters}>초기화</button>
             </form>
 
-            {error && <div className="product-list-error" role="alert"><span>{error}</span><button type="button" onClick={() => window.location.reload()}><Icon name="refresh" size={16} /> 다시 시도</button></div>}
+            {error && <div className="product-list-error" role="alert"><span>{error}</span><button type="button" onClick={() => setRequestVersion((version) => version + 1)}><Icon name="refresh" size={16} /> 다시 시도</button></div>}
 
             <div className="product-list-table-wrap">
               <table className="product-list-table">
@@ -234,12 +313,12 @@ function ProductListPage() {
                 <tbody>
                   {products.map((product) => (
                     <tr key={product._id || product.sku}>
-                      <td><div className="product-list-product"><ProductImage src={product.image} name={product.name} /><span><strong>{product.name}</strong><small>{product.description || '등록된 상품 설명이 없습니다.'}</small></span></div></td>
-                      <td><code>{product.sku || '-'}</code></td>
-                      <td><span className="product-list-category">{product.category || '-'}</span></td>
-                      <td><b>{formatPrice(product.price)}</b></td>
-                      <td>{formatDate(product.createdAt)}</td>
-                      <td><button className="product-list-detail-button" type="button" onClick={() => setSelectedProduct(product)}><Icon name="eye" size={16} /> 상세</button></td>
+                      <td data-label="상품 정보"><div className="product-list-product"><ProductImage src={product.image} name={product.name} /><span><strong>{product.name}</strong><small>{product.description || '등록된 상품 설명이 없습니다.'}</small></span></div></td>
+                      <td data-label="SKU"><code>{product.sku || '-'}</code></td>
+                      <td data-label="카테고리"><span className="product-list-category">{product.category || '-'}</span></td>
+                      <td data-label="판매가"><b>{formatPrice(product.price)}</b></td>
+                      <td data-label="등록일">{formatDate(product.createdAt)}</td>
+                      <td data-label="관리"><div className="product-list-actions"><button className="product-list-action-button" type="button" onClick={(event) => { productDetailTriggerRef.current = event.currentTarget; setSelectedProduct(product) }}><Icon name="eye" size={15} /> 상세</button><button className="product-list-action-button is-edit" type="button" onClick={() => navigate(`/admin/products/${product._id}/edit`)}><Icon name="edit" size={15} /> 수정</button><button className="product-list-action-button is-delete" type="button" disabled={deletingProductId === product._id} onClick={() => deleteProduct(product)}><Icon name="trash" size={15} /> {deletingProductId === product._id ? '삭제 중' : '삭제'}</button></div></td>
                     </tr>
                   ))}
                 </tbody>
@@ -256,7 +335,9 @@ function ProductListPage() {
                 <p>총 <strong>{pagination.total.toLocaleString('ko-KR')}</strong>개 상품 · 페이지당 {pagination.pageSize}개</p>
                 <nav aria-label="상품 목록 페이지">
                   <button type="button" aria-label="이전 페이지" disabled={visiblePage === 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}><Icon name="chevronLeft" size={17} /></button>
-                  {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => <button className={visiblePage === page ? 'is-active' : ''} type="button" key={page} aria-current={visiblePage === page ? 'page' : undefined} onClick={() => setCurrentPage(page)}>{page}</button>)}
+                  {paginationItems.map((item) => typeof item === 'number'
+                    ? <button className={visiblePage === item ? 'is-active' : ''} type="button" key={item} aria-current={visiblePage === item ? 'page' : undefined} onClick={() => setCurrentPage(item)}>{item}</button>
+                    : <span className="product-list-pagination-ellipsis" aria-hidden="true" key={item}>…</span>)}
                   <button type="button" aria-label="다음 페이지" disabled={visiblePage === totalPages} onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}><Icon name="chevronRight" size={17} /></button>
                 </nav>
               </footer>
@@ -267,8 +348,8 @@ function ProductListPage() {
 
       {selectedProduct && (
         <div className="product-list-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedProduct(null) }}>
-          <section className="product-list-modal" role="dialog" aria-modal="true" aria-labelledby="product-detail-title">
-            <button className="product-list-modal-close" type="button" aria-label="상품 상세 닫기" onClick={() => setSelectedProduct(null)}><Icon name="close" /></button>
+          <section className="product-list-modal" ref={modalRef} role="dialog" aria-modal="true" aria-labelledby="product-detail-title">
+            <button className="product-list-modal-close" type="button" ref={modalCloseButtonRef} aria-label="상품 상세 닫기" onClick={() => setSelectedProduct(null)}><Icon name="close" /></button>
             <ProductImage src={selectedProduct.image} name={selectedProduct.name} large />
             <div className="product-list-modal-copy">
               <span>{selectedProduct.category || '카테고리 없음'}</span>
@@ -276,6 +357,7 @@ function ProductListPage() {
               <strong>{formatPrice(selectedProduct.price)}</strong>
               <dl><div><dt>SKU</dt><dd>{selectedProduct.sku || '-'}</dd></div><div><dt>등록일</dt><dd>{formatDate(selectedProduct.createdAt)}</dd></div></dl>
               <p>{selectedProduct.description || '등록된 상품 설명이 없습니다.'}</p>
+              <div className="product-list-modal-actions"><button type="button" onClick={() => navigate(`/admin/products/${selectedProduct._id}/edit`)}><Icon name="edit" size={16} /> 상품 수정</button><button type="button" disabled={deletingProductId === selectedProduct._id} onClick={() => deleteProduct(selectedProduct)}><Icon name="trash" size={16} /> {deletingProductId === selectedProduct._id ? '삭제 중...' : '상품 삭제'}</button></div>
             </div>
           </section>
         </div>

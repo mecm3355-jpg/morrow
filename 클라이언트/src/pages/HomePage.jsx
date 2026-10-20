@@ -34,11 +34,13 @@ function ProductImage({ type, src, alt }) {
 }
 
 function ProductCard({ product, compact = false }) {
+  const [isWished, setIsWished] = useState(false)
+
   return (
     <article className={`product-card ${compact ? 'product-card--compact' : ''}`}>
       <div className="product-card-visual">
         <span className="product-badge">{product.badge || product.category || 'ITEM'}</span>
-        <button className="wish-button" type="button" aria-label={`${product.name} 찜하기`}>
+        <button className={`wish-button${isWished ? ' is-active' : ''}`} type="button" aria-label={`${product.name} ${isWished ? '찜 해제' : '찜하기'}`} aria-pressed={isWished} onClick={() => setIsWished((current) => !current)}>
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="M20.8 4.6a5.4 5.4 0 0 0-7.6 0L12 5.8l-1.2-1.2a5.4 5.4 0 0 0-7.6 7.6l1.2 1.2L12 21l7.6-7.6 1.2-1.2a5.4 5.4 0 0 0 0-7.6Z" />
           </svg>
@@ -131,6 +133,7 @@ function HomePage() {
   const [productsError, setProductsError] = useState('')
   const [productsRequest, setProductsRequest] = useState(0)
   const [activeCategory, setActiveCategory] = useState('전체')
+  const [newsletterMessage, setNewsletterMessage] = useState('')
 
   useEffect(() => {
     const controller = new AbortController()
@@ -226,7 +229,7 @@ function HomePage() {
             <div><p className="section-kicker">BEST ITEMS</p><h2 id="products-title">지금 가장 사랑받는 물건</h2></div>
             <div className="product-filters" aria-label="상품 필터">
               {productCategories.map((category) => (
-                <button className={activeCategory === category ? 'active' : ''} type="button" key={category} onClick={() => setActiveCategory(category)}>{category}</button>
+                <button className={activeCategory === category ? 'active' : ''} type="button" key={category} aria-pressed={activeCategory === category} onClick={() => setActiveCategory(category)}>{category}</button>
               ))}
             </div>
           </div>
@@ -272,11 +275,12 @@ function HomePage() {
           <p className="section-kicker">WEEKLY LETTER</p>
           <h2 id="newsletter-title">취향이 머무는 소식을 받아보세요</h2>
           <p>새로운 브랜드와 계절의 물건을 매주 한 번 전해드릴게요.</p>
-          <form onSubmit={(event) => event.preventDefault()}>
+          <form onSubmit={(event) => { event.preventDefault(); setNewsletterMessage('뉴스레터 구독 기능을 준비하고 있습니다.') }}>
             <label className="sr-only" htmlFor="newsletter-email">이메일 주소</label>
-            <input id="newsletter-email" type="email" placeholder="이메일 주소를 입력해 주세요" />
+            <input id="newsletter-email" type="email" placeholder="이메일 주소를 입력해 주세요" required />
             <button type="submit">구독하기 <ArrowIcon /></button>
           </form>
+          {newsletterMessage ? <p className="newsletter-status" role="status">{newsletterMessage}</p> : null}
         </section>
       </main>
 

@@ -14,6 +14,10 @@
   color: #5138f5;
 }
 
+.main-nav-admin {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .main-nav {
     grid-row: 1;
@@ -27,7 +31,25 @@
 
 @media (max-width: 700px) {
   .main-nav {
-    gap: 12px;
-    font-size: 10px;
+    position: absolute;
+    top: calc(100% - 4px);
+    right: 0;
+    left: 0;
+    display: none;
+    grid-column: 1 / -1;
+    align-items: stretch;
+    gap: 4px;
+    padding: 10px;
+    border: 1px solid #e4e1ec;
+    border-radius: 14px;
+    background: #fff;
+    box-shadow: 0 18px 42px rgb(38 33 64 / 16%);
+    font-size: 13px;
+    white-space: normal;
   }
+
+  .main-nav.is-open { display: flex; }
+  .main-nav a { padding: 11px 12px; border-radius: 9px; }
+  .main-nav a:hover { background: #f4f1ff; }
+  .main-nav-admin { display: block; color: #5138f5; font-weight: 800; }
 }

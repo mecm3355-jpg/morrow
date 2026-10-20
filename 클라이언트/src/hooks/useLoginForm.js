@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { saveStoredAuth } from '../utils/authStorage'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -10,6 +10,7 @@ const initialForm = {
 
 function useLoginForm() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [form, setForm] = useState(initialForm)
   const [showPassword, setShowPassword] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -55,12 +56,15 @@ function useLoginForm() {
         tokenType: data.tokenType,
         user: data.user,
       })
-      navigate('/', {
-        replace: true,
-        state: {
-          toastMessage: `${data.user?.name || '회원'}님, 환영합니다.`,
-        },
-      })
+      const requestedPath = location.state?.from
+      const isAdmin = data.user?.user_type?.trim().toLowerCase() === 'admin'
+      const destination = isAdmin && typeof requestedPath === 'string' && requestedPath.startsWith('/admin')
+        ? requestedPath
+        : '/'
+
+      navigate(destination, destination === '/'
+        ? { replace: true, state: { toastMessage: `${data.user?.name || '회원'}님, 환영합니다.` } }
+        : { replace: true })
     } catch (error) {
       setMessage({ type: 'error', text: error.message || '서버에 연결할 수 없습니다.' })
     } finally {

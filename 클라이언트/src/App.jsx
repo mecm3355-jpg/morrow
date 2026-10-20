@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import AdminRoute from './components/AdminRoute'
 import './App.css'
 
 const HomePage = lazy(() => import('./pages/HomePage'))
@@ -17,9 +18,12 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/admin" element={<AdminPage />} />
-          <Route path="/admin/products" element={<ProductListPage />} />
-          <Route path="/admin/products/new" element={<ProductCreatePage />} />
+          <Route element={<AdminRoute />}>
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/products" element={<ProductListPage />} />
+            <Route path="/admin/products/new" element={<ProductCreatePage />} />
+            <Route path="/admin/products/:productId/edit" element={<ProductCreatePage />} />
+          </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
