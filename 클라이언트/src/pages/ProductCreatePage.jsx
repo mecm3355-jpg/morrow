@@ -4,7 +4,13 @@ import { getStoredAuth } from '../utils/authStorage'
 import './ProductCreatePage.css'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
-const MAX_IMAGE_SIZE = 2 * 1024 * 1024
+const CLOUDINARY_CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || ''
+const CLOUDINARY_UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || ''
+const CLOUDINARY_WIDGET_URL = 'https://upload-widget.cloudinary.com/latest/global/all.js'
+const missingCloudinaryEnv = [
+  !CLOUDINARY_CLOUD_NAME && 'VITE_CLOUDINARY_CLOUD_NAME',
+  !CLOUDINARY_UPLOAD_PRESET && 'VITE_CLOUDINARY_UPLOAD_PRESET',
+].filter(Boolean)
 const categories = ['상의', '하의', '악세사리']
 const initialForm = {
   name: '',
@@ -24,6 +30,41 @@ const navigation = [
   { icon: 'message', label: '리뷰 · 문의' },
   { icon: 'chart', label: '통계' },
 ]
+
+let cloudinaryWidgetScriptPromise
+
+function loadCloudinaryWidget() {
+  if (window.cloudinary?.createUploadWidget) return Promise.resolve(window.cloudinary)
+  if (cloudinaryWidgetScriptPromise) return cloudinaryWidgetScriptPromise
+
+  cloudinaryWidgetScriptPromise = new Promise((resolve, reject) => {
+    const existingScript = document.querySelector(`script[src="${CLOUDINARY_WIDGET_URL}"]`)
+    const script = existingScript || document.createElement('script')
+
+    const handleLoad = () => {
+      if (window.cloudinary?.createUploadWidget) resolve(window.cloudinary)
+      else {
+        script.remove()
+        reject(new Error('Cloudinary 위젯을 불러오지 못했습니다.'))
+      }
+    }
+    const handleError = () => {
+      script.remove()
+      reject(new Error('Cloudinary 위젯을 불러오지 못했습니다.'))
+    }
+
+    script.addEventListener('load', handleLoad, { once: true })
+    script.addEventListener('error', handleError, { once: true })
+
+    if (!existingScript) {
+      script.src = CLOUDINARY_WIDGET_URL
+      script.async = true
+      document.head.appendChild(script)
+    }
+  })
+
+  return cloudinaryWidgetScriptPromise
+}
 
 const iconPaths = {
   dashboard: <><path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v10h13V10M9 20v-6h6v6" /></>,
@@ -56,11 +97,11 @@ function ProductCreatePage() {
   const [auth] = useState(getStoredAuth)
   const [form, setForm] = useState(initialForm)
   const [fileName, setFileName] = useState('')
-  const [isDragging, setIsDragging] = useState(false)
+  const [isWidgetLoading, setIsWidgetLoading] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
-  const imageInputRef = useRef(null)
+  const uploadWidgetRef = useRef(null)
 
   const currentUser = auth?.user
   const isAdmin = typeof currentUser?.user_type === 'string'
@@ -74,38 +115,64 @@ function ProductCreatePage() {
     }))
   }
 
-  function readImage(file) {
+  async function openUploadWidget() {
     setMessage({ type: '', text: '' })
 
-    if (!file?.type.startsWith('image/')) {
-      setMessage({ type: 'error', text: '이미지 파일만 업로드할 수 있습니다.' })
+    if (!auth?.token || !isAdmin) {
+      setMessage({ type: 'error', text: '관리자 계정으로 로그인한 뒤 이미지를 업로드해 주세요.' })
       return
     }
 
-    if (file.size > MAX_IMAGE_SIZE) {
-      setMessage({ type: 'error', text: '이미지는 2MB 이하의 파일을 선택해 주세요.' })
+    if (missingCloudinaryEnv.length) {
+      setMessage({ type: 'error', text: `Cloudinary 환경변수를 설정해 주세요: ${missingCloudinaryEnv.join(', ')}` })
       return
     }
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      setForm((current) => ({ ...current, image: String(reader.result) }))
-      setFileName(file.name)
-    }
-    reader.onerror = () => setMessage({ type: 'error', text: '이미지를 불러오지 못했습니다.' })
-    reader.readAsDataURL(file)
-  }
+    try {
+      setIsWidgetLoading(true)
+      const cloudinary = await loadCloudinaryWidget()
 
-  function handleDrop(event) {
-    event.preventDefault()
-    setIsDragging(false)
-    readImage(event.dataTransfer.files?.[0])
+      if (!uploadWidgetRef.current) {
+        uploadWidgetRef.current = cloudinary.createUploadWidget({
+          cloudName: CLOUDINARY_CLOUD_NAME,
+          uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+          sources: ['local', 'url', 'camera'],
+          multiple: false,
+          resourceType: 'image',
+          clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+          maxImageFileSize: 10 * 1024 * 1024,
+        }, (error, result) => {
+          if (error) {
+            setMessage({ type: 'error', text: '이미지 업로드 중 오류가 발생했습니다.' })
+            return
+          }
+
+          if (result?.event === 'success' && result.info?.secure_url) {
+            const extension = result.info.format ? `.${result.info.format}` : ''
+            const uploadedFileName = result.info.original_filename
+              ? `${result.info.original_filename}${extension}`
+              : result.info.public_id
+
+            setForm((current) => ({ ...current, image: result.info.secure_url }))
+            setFileName(uploadedFileName || 'Cloudinary 이미지')
+            setMessage({ type: 'success', text: '이미지가 업로드되었습니다. 미리보기를 확인해 주세요.' })
+          }
+        })
+      }
+
+      uploadWidgetRef.current.open()
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message || 'Cloudinary 위젯을 열지 못했습니다.' })
+      cloudinaryWidgetScriptPromise = undefined
+    } finally {
+      setIsWidgetLoading(false)
+    }
   }
 
   function removeImage() {
     setForm((current) => ({ ...current, image: '' }))
     setFileName('')
-    if (imageInputRef.current) imageInputRef.current.value = ''
+    setMessage({ type: '', text: '' })
   }
 
   async function handleSubmit(event) {
@@ -153,7 +220,6 @@ function ProductCreatePage() {
       setMessage({ type: 'success', text: `${data.name || form.name} 상품을 등록했습니다.` })
       setForm(initialForm)
       setFileName('')
-      if (imageInputRef.current) imageInputRef.current.value = ''
     } catch (error) {
       setMessage({ type: 'error', text: error.message || '서버에 연결할 수 없습니다.' })
     } finally {
@@ -235,18 +301,11 @@ function ProductCreatePage() {
 
             <section className="product-create-card product-image-card">
               <h2>상품 이미지</h2>
-              <label
-                className={`product-image-dropzone${isDragging ? ' is-dragging' : ''}`}
-                onDragEnter={() => setIsDragging(true)}
-                onDragLeave={() => setIsDragging(false)}
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={handleDrop}
-              >
-                <input ref={imageInputRef} name="image" type="file" accept="image/jpeg,image/png,image/webp" onChange={(event) => readImage(event.target.files?.[0])} required={!form.image} />
+              <button className="product-image-dropzone" type="button" onClick={openUploadWidget} disabled={isWidgetLoading}>
                 <span className="product-upload-icon"><Icon name="upload" size={48} /><i><Icon name="plus" size={18} /></i></span>
-                <strong>이미지를 드래그하거나 클릭해서 업로드</strong>
-                <small>JPG, PNG, WEBP · 최대 2MB</small>
-              </label>
+                <strong>{isWidgetLoading ? 'Cloudinary 위젯을 불러오는 중...' : 'Cloudinary 위젯으로 이미지 업로드'}</strong>
+                <small>JPG, PNG, WEBP · 최대 10MB</small>
+              </button>
 
               {form.image ? (
                 <div className="product-image-preview">
