@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 
 const healthRouter = require('./routes/health.routes');
+const productRouter = require('./routes/product.routes');
 const userRouter = require('./routes/user.routes');
 const connectDatabase = require('./config/db');
 
@@ -57,6 +58,7 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/health', healthRouter);
+app.use('/api/products', productRouter);
 app.use('/api/users', userRouter);
 
 app.use((req, res) => {

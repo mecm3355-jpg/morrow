@@ -5,13 +5,25 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/user.model');
 
 const userFields = ['email', 'name', 'password', 'user_type', 'address'];
+const updatableUserFields = ['email', 'name', 'password', 'address'];
 const requiredUserFields = ['email', 'name', 'password', 'user_type'];
+const publicUserTypes = ['customer', 'seller'];
 const passwordMinLength = 8;
 const passwordSaltRounds = 12;
 const defaultTokenExpiresIn = '1h';
 
 function pickUserFields(body) {
   return userFields.reduce((userData, field) => {
+    if (Object.prototype.hasOwnProperty.call(body, field)) {
+      userData[field] = body[field];
+    }
+
+    return userData;
+  }, {});
+}
+
+function pickUpdatableUserFields(body) {
+  return updatableUserFields.reduce((userData, field) => {
     if (Object.prototype.hasOwnProperty.call(body, field)) {
       userData[field] = body[field];
     }
@@ -63,6 +75,12 @@ async function createUser(req, res) {
     return res.status(400).json({
       message: '필수 입력값을 모두 입력해 주세요.',
       fields: missingFields,
+    });
+  }
+
+  if (!publicUserTypes.includes(userData.user_type)) {
+    return res.status(400).json({
+      message: '회원 유형은 customer 또는 seller만 선택할 수 있습니다.',
     });
   }
 
@@ -158,7 +176,7 @@ async function updateUser(req, res) {
     return res.status(400).json({ message: 'Invalid user ID.' });
   }
 
-  const updateData = pickUserFields(req.body);
+  const updateData = pickUpdatableUserFields(req.body);
 
   if (Object.keys(updateData).length === 0) {
     return res.status(400).json({ message: 'No user fields were provided.' });

@@ -1,0 +1,33 @@
+.main-nav {
+  display: flex;
+  gap: 31px;
+  color: #656174;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.main-nav a {
+  transition: color 180ms ease;
+}
+
+.main-nav a:hover {
+  color: #5138f5;
+}
+
+@media (max-width: 900px) {
+  .main-nav {
+    grid-row: 1;
+    grid-column: 2;
+    justify-content: center;
+    justify-self: center;
+    gap: clamp(12px, 3vw, 24px);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 700px) {
+  .main-nav {
+    gap: 12px;
+    font-size: 10px;
+  }
+}

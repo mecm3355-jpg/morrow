@@ -5,6 +5,7 @@ import './App.css'
 const HomePage = lazy(() => import('./pages/HomePage'))
 const SignupPage = lazy(() => import('./pages/SignupPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Suspense>
