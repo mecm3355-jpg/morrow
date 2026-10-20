@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './AdminPage.css'
 
 const navigation = [
@@ -86,6 +87,7 @@ function ProductThumb({ type }) {
 }
 
 function AdminPage() {
+  const navigate = useNavigate()
   const [activeNav, setActiveNav] = useState('대시보드')
   const [search, setSearch] = useState('')
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -142,7 +144,7 @@ function AdminPage() {
             <div><p>{formattedToday}</p><h1>안녕하세요, 관리자님</h1></div>
             <div className="admin-heading-actions">
               <button className="admin-secondary-button" type="button" onClick={() => handleAction('매출 리포트를 준비했습니다.')}><Icon name="download" size={18} /> 리포트</button>
-              <button className="admin-primary-button" type="button" onClick={() => handleAction('상품 등록 화면을 준비 중입니다.')}><Icon name="plus" size={18} /> 상품 등록</button>
+              <button className="admin-primary-button" type="button" onClick={() => navigate('/admin/products/new')}><Icon name="plus" size={18} /> 상품 등록</button>
             </div>
           </section>
 
