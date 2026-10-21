@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import AnnouncementBar from '../components/AnnouncementBar'
+import CartVirtualTryOn from '../components/CartVirtualTryOn'
 import Header from '../components/Header'
 import { clearStoredAuth, getStoredAuth } from '../utils/authStorage'
 import './CartPage.css'
@@ -15,6 +16,7 @@ const iconPaths = {
   arrow: <><path d="M4 12h16" /><path d="m14 6 6 6-6 6" /></>,
   refresh: <><path d="M20 7v5h-5" /><path d="M19 12a7 7 0 1 1-2-5" /></>,
   shield: <><path d="M12 3 5 6v5c0 4.8 2.9 8 7 10 4.1-2 7-5.2 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" /></>,
+  tryOn: <><path d="M9 4a3 3 0 0 1 6 0c0 1.7-1.4 2.2-3 3" /><path d="m12 7 8 5-2 3-6-3-6 3-2-3 8-5Z" /><path d="M6 15v5h12v-5" /></>,
 }
 
 function Icon({ name, size = 20 }) {
@@ -40,6 +42,7 @@ function CartPage() {
   const [busyItemId, setBusyItemId] = useState('')
   const [isClearing, setIsClearing] = useState(false)
   const [isCheckingOut, setIsCheckingOut] = useState(false)
+  const [isOutfitTryOnOpen, setIsOutfitTryOnOpen] = useState(false)
 
   const requestCart = useCallback(async (path = '', options = {}) => {
     const currentAuth = getStoredAuth()
@@ -170,11 +173,11 @@ function CartPage() {
       const result = await requestCart('/validate', { method: 'POST' })
       setCart(result.cart)
 
-      if (!result.valid) {
-        setNotice(result.priceChanges?.length ? '상품 가격이 변경되었습니다. 금액을 다시 확인해 주세요.' : '구매할 수 없는 상품이 포함되어 있습니다.')
+      if (result.unavailableItemIds?.length || (!result.valid && !result.priceChanges?.length)) {
+        setNotice('구매할 수 없는 상품이 포함되어 있습니다.')
         return
       }
-      setNotice('상품 가격을 확인했습니다. 주문 기능은 직접 연결해 주세요.')
+      navigate('/order', { state: { cart: result.cart } })
     } catch (requestError) {
       setError(requestError.message)
     } finally {
@@ -192,8 +195,7 @@ function CartPage() {
 
   const items = cart?.items || []
   const summary = cart?.summary || { totalQuantity: 0, totalPrice: 0, currentTotalPrice: 0, hasPriceChanges: false }
-  const deliveryFee = summary.currentTotalPrice >= 50000 || !items.length ? 0 : 3000
-  const paymentTotal = summary.currentTotalPrice + deliveryFee
+  const paymentTotal = summary.currentTotalPrice
 
   return (
     <div className="page cart-page">
@@ -216,6 +218,11 @@ function CartPage() {
         ) : (
           <div className="cart-layout">
             <section className="cart-items" aria-label="장바구니 상품">
+              <div className="cart-outfit-check">
+                <span><Icon name="tryOn" size={19} /></span>
+                <div><small>FINAL OUTFIT CHECK</small><strong>담은 상품을 한 번에 입어보세요</strong><p>상의·하의·악세사리를 마네킹에 함께 배치해 주문 전 코디를 확인할 수 있어요.</p></div>
+                <button type="button" onClick={() => setIsOutfitTryOnOpen(true)}>전체 코디 가상 착장</button>
+              </div>
               {error ? <div className="cart-error" role="alert">{error}</div> : null}
               {summary.hasPriceChanges ? <div className="cart-price-notice"><Icon name="refresh" size={16} />가격이 변경된 상품이 있습니다. 현재 가격을 확인해 주세요.</div> : null}
               {items.map((item) => {
@@ -234,8 +241,9 @@ function CartPage() {
 
             <aside className="cart-summary">
               <h2>결제 예정 금액</h2>
-              <dl><div><dt>상품 금액</dt><dd>{formatPrice(summary.currentTotalPrice)}</dd></div><div><dt>배송비</dt><dd>{deliveryFee ? formatPrice(deliveryFee) : '무료'}</dd></div></dl>
+              <dl><div><dt>상품 금액</dt><dd>{formatPrice(summary.currentTotalPrice)}</dd></div></dl>
               <div className="cart-summary-total"><span>총 결제 금액</span><strong>{formatPrice(paymentTotal)}</strong></div>
+              <div className="cart-fit-reminder"><Icon name="tryOn" size={17} /><span><strong>전체 코디 확인 완료하셨나요?</strong>장바구니 상품을 한 마네킹에 함께 입어볼 수 있어요.</span></div>
               <button type="button" disabled={isCheckingOut} onClick={checkout}>{isCheckingOut ? '가격 확인 중...' : `${summary.totalQuantity}개 상품 구매하기`}</button>
               <p><Icon name="shield" size={17} />결제 직전 상품 가격을 다시 확인합니다.</p>
               <Link to="/#products">쇼핑 계속하기 <span>›</span></Link>
@@ -243,6 +251,7 @@ function CartPage() {
           </div>
         )}
       </main>
+      {isOutfitTryOnOpen ? <CartVirtualTryOn items={items} isOpen onClose={() => setIsOutfitTryOnOpen(false)} /> : null}
     </div>
   )
 }

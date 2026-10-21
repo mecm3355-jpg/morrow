@@ -4,6 +4,7 @@ const helmet = require('helmet');
 
 const healthRouter = require('./routes/health.routes');
 const cartRouter = require('./routes/cart.routes');
+const orderRouter = require('./routes/order.routes');
 const productRouter = require('./routes/product.routes');
 const userRouter = require('./routes/user.routes');
 const connectDatabase = require('./config/db');
@@ -71,6 +72,7 @@ app.get('/', (req, res) => {
 
 app.use('/api/health', healthRouter);
 app.use('/api/cart', cartRouter);
+app.use('/api/orders', orderRouter);
 app.use('/api/products', productRouter);
 app.use('/api/users', userRouter);
 

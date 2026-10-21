@@ -1,0 +1,89 @@
+.virtual-tryon-backdrop {
+  position: fixed;
+  z-index: 2000;
+  inset: 0;
+  display: grid;
+  overflow-y: auto;
+  padding: 28px;
+  place-items: center;
+  background: rgb(19 17 31 / 72%);
+  backdrop-filter: blur(10px);
+}
+
+.virtual-tryon-dialog {
+  width: min(980px, 100%);
+  overflow: hidden;
+  border-radius: 24px;
+  color: #18162b;
+  background: #f8f8fb;
+  box-shadow: 0 30px 90px rgb(5 4 17 / 40%);
+}
+
+.virtual-tryon-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 26px;
+  border-bottom: 1px solid #e2dfe9;
+  background: #fff;
+}
+
+.virtual-tryon-dialog header span { color: #5138f5; font-size: 8px; font-weight: 900; letter-spacing: .18em; }
+.virtual-tryon-dialog header h2 { margin: 5px 0 0; font-size: 23px; letter-spacing: -.045em; }
+.virtual-tryon-dialog header button { display: grid; width: 38px; height: 38px; padding: 0; place-items: center; border: 1px solid #ddd9e5; border-radius: 50%; color: #5d5868; background: #fff; font-size: 24px; cursor: pointer; }
+
+.virtual-tryon-body { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(260px, .7fr); min-height: 590px; }
+.virtual-tryon-stage { position: relative; display: grid; min-height: 590px; overflow: hidden; place-items: center; background: linear-gradient(145deg, #e9e7ed, #d7d3dc); isolation: isolate; }
+.virtual-tryon-stage::before { position: absolute; z-index: -1; inset: 8% 10%; border: 1px solid rgb(255 255 255 / 58%); border-radius: 48% 48% 20px 20px; content: ''; }
+.virtual-tryon-photo { width: 100%; height: 100%; object-fit: contain; }
+.virtual-tryon-product { position: absolute; z-index: 2; max-height: 88%; object-fit: contain; cursor: grab; filter: drop-shadow(0 13px 16px rgb(25 21 40 / 20%)); touch-action: none; user-select: none; }
+.virtual-tryon-product:active { cursor: grabbing; }
+.virtual-tryon-product.use-blend { mix-blend-mode: multiply; }
+.virtual-tryon-drag-hint { position: absolute; z-index: 4; bottom: 16px; left: 50%; width: max-content; max-width: calc(100% - 32px); padding: 8px 12px; border-radius: 999px; color: #514c5d; background: rgb(255 255 255 / 88%); font-size: 9px; font-weight: 800; transform: translateX(-50%); backdrop-filter: blur(10px); }
+
+.virtual-tryon-upload { display: grid; width: calc(100% - 56px); min-height: 430px; place-items: center; align-content: center; gap: 8px; border: 1px dashed #aaa3b8; border-radius: 20px; color: #676171; background: rgb(255 255 255 / 44%); text-align: center; cursor: pointer; }
+.virtual-tryon-upload input, .virtual-tryon-change-photo input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+.virtual-tryon-upload strong { margin-top: 14px; color: #302c3e; font-size: 13px; }
+.virtual-tryon-upload small { font-size: 9px; }
+.virtual-tryon-upload em { margin-top: 10px; padding: 10px 17px; border-radius: 999px; color: #fff; background: #5138f5; font-size: 10px; font-style: normal; font-weight: 850; }
+.virtual-tryon-person { display: grid; width: 96px; height: 130px; justify-items: center; align-content: start; }
+.virtual-tryon-person i { width: 42px; height: 42px; border-radius: 50%; background: linear-gradient(145deg, #bab4c5, #948da2); }
+.virtual-tryon-person b { width: 82px; height: 86px; margin-top: 5px; border-radius: 43px 43px 16px 16px; background: linear-gradient(145deg, #aaa3b7, #868091); }
+
+.virtual-tryon-panel { padding: 24px; background: #fff; }
+.virtual-tryon-product-info { display: flex; align-items: center; gap: 12px; padding-bottom: 20px; border-bottom: 1px solid #e8e5ec; }
+.virtual-tryon-product-info img { width: 58px; height: 58px; padding: 4px; border-radius: 10px; background: #eeeaf0; object-fit: contain; }
+.virtual-tryon-product-info div { display: grid; min-width: 0; gap: 4px; }
+.virtual-tryon-product-info small { color: #928d9a; font-size: 8px; }
+.virtual-tryon-product-info strong { overflow: hidden; font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.virtual-tryon-change-photo { display: grid; gap: 3px; margin: 18px 0 24px; padding: 11px 13px; border: 1px solid #dcd8e3; border-radius: 10px; color: #5138f5; font-size: 10px; font-weight: 850; cursor: pointer; }
+.virtual-tryon-change-photo small { overflow: hidden; color: #9994a0; font-size: 8px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.virtual-tryon-mannequin { width: 100%; min-height: 38px; margin-top: -15px; border: 1px solid #dedbe6; border-radius: 9px; color: #5d5769; background: #f8f7fa; font-size: 9px; font-weight: 800; cursor: pointer; }
+.virtual-tryon-range { display: grid; gap: 10px; margin-top: 21px; }
+.virtual-tryon-range > span { display: flex; align-items: center; justify-content: space-between; gap: 15px; font-size: 10px; }
+.virtual-tryon-range output { color: #5138f5; font-weight: 850; }
+.virtual-tryon-range input { width: 100%; accent-color: #5138f5; }
+.virtual-tryon-switch { display: flex; align-items: center; gap: 9px; margin-top: 24px; color: #5e5967; font-size: 9px; cursor: pointer; }
+.virtual-tryon-switch input { position: absolute; opacity: 0; }
+.virtual-tryon-switch > span { position: relative; width: 34px; height: 19px; border-radius: 999px; background: #cbc7d2; transition: background 160ms ease; }
+.virtual-tryon-switch > span::after { position: absolute; top: 3px; left: 3px; width: 13px; height: 13px; border-radius: 50%; background: #fff; content: ''; transition: transform 160ms ease; }
+.virtual-tryon-switch input:checked + span { background: #5138f5; }
+.virtual-tryon-switch input:checked + span::after { transform: translateX(15px); }
+.virtual-tryon-reset { width: 100%; min-height: 39px; margin-top: 16px; border: 1px solid #dedbe4; border-radius: 9px; color: #625d6b; background: #f8f7fa; font-size: 9px; font-weight: 800; cursor: pointer; }
+.virtual-tryon-error { margin: 15px 0 0; color: #d13f53; font-size: 9px; }
+.virtual-tryon-notice { margin-top: 24px; padding: 15px; border-radius: 12px; background: #f1efff; }
+.virtual-tryon-notice strong { color: #5138f5; font-size: 9px; }
+.virtual-tryon-notice p { margin: 7px 0 0; color: #777181; font-size: 8px; line-height: 1.55; }
+
+@media (max-width: 760px) {
+  .virtual-tryon-backdrop { padding: 12px; place-items: start center; }
+  .virtual-tryon-dialog { margin: 10px 0; border-radius: 18px; }
+  .virtual-tryon-body { grid-template-columns: 1fr; }
+  .virtual-tryon-stage { min-height: min(68vh, 540px); }
+  .virtual-tryon-upload { min-height: 360px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .virtual-tryon-switch > span, .virtual-tryon-switch > span::after { transition: none; }
+}

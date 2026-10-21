@@ -39,6 +39,17 @@ const productSchema = new mongoose.Schema(
       required: [true, '상품 이미지는 필수입니다.'],
       trim: true,
     },
+    spinImages: {
+      type: [{
+        type: String,
+        trim: true,
+      }],
+      default: [],
+      validate: {
+        validator: (images) => images.length <= 48,
+        message: '360도 이미지는 최대 48장까지 등록할 수 있습니다.',
+      },
+    },
     description: {
       type: String,
       trim: true,

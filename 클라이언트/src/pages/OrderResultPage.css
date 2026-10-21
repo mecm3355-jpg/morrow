@@ -1,0 +1,243 @@
+.order-result-page {
+  min-height: 100vh;
+  color: #17152b;
+  background:
+    radial-gradient(circle at 50% 30%, rgb(232 228 255 / 70%), transparent 35%),
+    radial-gradient(circle at 80% 16%, rgb(225 233 249 / 55%), transparent 28%),
+    #f5f6fa;
+}
+
+.order-result-page main {
+  width: min(1120px, calc(100% - 48px));
+  margin: 0 auto;
+  padding-bottom: 90px;
+}
+
+.order-result-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 25px 0 18px;
+  color: #9a96a4;
+  font-size: 10px;
+}
+
+.order-result-breadcrumb a:hover { color: #5138f5; }
+.order-result-breadcrumb strong { color: #625d6b; }
+
+.order-result-heading p {
+  margin: 0 0 8px;
+  color: #5138f5;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .2em;
+}
+
+.order-result-page.is-failure .order-result-heading p { color: #d74258; }
+
+.order-result-heading h1 {
+  margin: 0;
+  font-size: clamp(36px, 4vw, 52px);
+  letter-spacing: -.065em;
+}
+
+.order-result-progress {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(680px, 100%);
+  margin: 24px auto 30px;
+  padding: 0;
+  list-style: none;
+}
+
+.order-result-progress li {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: #9693a2;
+  font-size: 10px;
+}
+
+.order-result-progress li:not(:last-child)::after {
+  position: absolute;
+  z-index: 0;
+  top: 50%;
+  right: 12px;
+  left: 52px;
+  height: 1px;
+  background: #aaa0ed;
+  content: '';
+}
+
+.order-result-progress li:nth-child(2) { justify-content: center; }
+.order-result-progress li:last-child { justify-content: flex-end; }
+.order-result-progress span {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 50%;
+  background: #ece9ff;
+  color: #5138f5;
+  font-weight: 850;
+}
+
+.order-result-progress strong {
+  position: relative;
+  z-index: 1;
+  padding: 4px 9px;
+  background: #f5f6fa;
+  white-space: nowrap;
+}
+
+.order-result-progress .is-active { color: #5138f5; }
+.order-result-progress .is-active span { color: #fff; background: #5138f5; box-shadow: 0 8px 18px rgb(81 56 245 / 25%); }
+.order-result-progress .is-failed { color: #c9384d; }
+.order-result-progress .is-failed span { color: #fff; background: #d74258; box-shadow: 0 8px 18px rgb(215 66 88 / 22%); }
+
+.order-result-card {
+  width: min(720px, 100%);
+  margin: 0 auto;
+  padding: 36px;
+  border: 1px solid #e1e2ea;
+  border-radius: 20px;
+  background: rgb(255 255 255 / 97%);
+  box-shadow: 0 20px 55px rgb(38 31 78 / 8%);
+  text-align: center;
+}
+
+.order-result-loading {
+  display: grid;
+  min-height: calc(100vh - 110px);
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  color: #625d6f;
+  text-align: center;
+}
+
+.order-result-loading > span {
+  width: 38px;
+  height: 38px;
+  margin-bottom: 5px;
+  border: 3px solid #dfd9ff;
+  border-top-color: #5138f5;
+  border-radius: 50%;
+  animation: order-result-spin .75s linear infinite;
+}
+
+.order-result-loading strong { font-size: 14px; }
+.order-result-loading p { margin: 0; color: #918c9c; font-size: 10px; }
+
+.order-result-icon {
+  display: grid;
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 20px;
+  place-items: center;
+  border: 11px solid #f0edff;
+  border-radius: 50%;
+  color: #5138f5;
+  background: #e8e3ff;
+  box-shadow: 0 12px 28px rgb(81 56 245 / 14%);
+  font-size: 36px;
+  font-weight: 900;
+}
+
+.is-failure .order-result-icon {
+  border-color: #fff0f2;
+  color: #c9384d;
+  background: #ffe3e7;
+  box-shadow: 0 12px 28px rgb(201 56 77 / 12%);
+}
+
+.order-result-card h2 { margin: 0; font-size: clamp(26px, 3vw, 38px); letter-spacing: -.055em; }
+.order-result-description { margin: 10px auto 22px; color: #777386; font-size: 13px; line-height: 1.7; }
+
+.order-result-details {
+  margin: 0;
+  padding: 11px 24px;
+  border-radius: 14px;
+  background: #f7f8fb;
+  text-align: left;
+}
+
+.order-result-details > div { display: grid; grid-template-columns: 110px 1fr; align-items: center; min-height: 45px; border-bottom: 1px solid #e3e5ec; }
+.order-result-details > div:last-child { border-bottom: 0; }
+.order-result-details dt { color: #7f7b8d; font-size: 11px; font-weight: 750; }
+.order-result-details dd { margin: 0; overflow-wrap: anywhere; color: #242033; font-size: 12px; font-weight: 750; }
+.order-result-details dd.is-price { color: #5138f5; font-size: 20px; font-weight: 900; }
+
+.order-result-error {
+  margin: 0;
+  padding: 17px 20px;
+  border: 1px solid #ffd6dc;
+  border-radius: 12px;
+  color: #a72b3e;
+  background: #fff3f5;
+  font-size: 11px;
+  line-height: 1.65;
+}
+
+.order-result-items {
+  margin-top: 16px;
+  padding: 18px 24px 8px;
+  border: 1px solid #e4e5ec;
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+}
+
+.order-result-items > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 8px; }
+.order-result-items h3 { margin: 0; font-size: 13px; }
+.order-result-items header span { color: #5138f5; font-size: 9px; font-weight: 850; }
+.order-result-items ul { margin: 0; padding: 0; list-style: none; }
+.order-result-items li { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 11px 0; border-top: 1px solid #ececf1; }
+.order-result-item-image { display: grid; width: 52px; height: 52px; overflow: hidden; place-items: center; border-radius: 9px; color: #5138f5; background: #eeecf1; font-weight: 900; }
+.order-result-item-image img { width: 100%; height: 100%; padding: 4px; object-fit: contain; }
+.order-result-item-copy { display: grid; min-width: 0; gap: 5px; }
+.order-result-item-copy strong { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.order-result-item-copy small { color: #8a8593; font-size: 9px; }
+.order-result-items li > b { color: #363142; font-size: 11px; white-space: nowrap; }
+
+.order-result-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 16px; }
+.order-result-actions a { display: grid; min-height: 54px; place-items: center; border-radius: 11px; font-size: 12px; font-weight: 850; }
+.order-result-actions .is-primary { color: #fff; background: linear-gradient(100deg, #5138f5, #6847fa); box-shadow: 0 12px 24px rgb(81 56 245 / 19%); }
+.order-result-actions .is-primary:hover { background: #4028df; }
+.order-result-actions .is-secondary { border: 1px solid #6651f4; color: #5138f5; background: #fff; }
+.order-result-actions .is-secondary:hover { background: #f6f4ff; }
+.is-failure .order-result-actions .is-primary { background: linear-gradient(100deg, #c9384d, #e35b6f); box-shadow: 0 12px 24px rgb(201 56 77 / 17%); }
+
+.order-result-note { display: flex; min-height: 52px; align-items: center; justify-content: center; gap: 10px; margin: 16px 0 0; border-radius: 11px; color: #898597; background: #f5f6f9; font-size: 10px; }
+.order-result-note span { color: #7460f7; font-size: 8px; }
+.is-failure .order-result-note span { color: #d74258; }
+
+@keyframes order-result-spin { to { transform: rotate(360deg); } }
+
+@media (max-width: 700px) {
+  .order-result-page main { width: calc(100% - 32px); padding-bottom: 60px; }
+  .order-result-progress strong { display: none; }
+  .order-result-progress li:nth-child(2) { justify-content: center; }
+  .order-result-progress li:not(:last-child)::after { right: -35%; left: calc(50% + 22px); }
+  .order-result-card { padding: 28px 22px; }
+  .order-result-items { padding-inline: 16px; }
+}
+
+@media (max-width: 480px) {
+  .order-result-page main { width: calc(100% - 24px); }
+  .order-result-heading h1 { font-size: 36px; }
+  .order-result-icon { width: 72px; height: 72px; border-width: 9px; font-size: 30px; }
+  .order-result-details { padding: 9px 15px; }
+  .order-result-details > div { grid-template-columns: 86px 1fr; }
+  .order-result-actions { grid-template-columns: 1fr; }
+  .order-result-items li { grid-template-columns: 46px minmax(0, 1fr); }
+  .order-result-item-image { width: 46px; height: 46px; }
+  .order-result-items li > b { grid-column: 2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .order-result-loading > span { animation: none; }
+}

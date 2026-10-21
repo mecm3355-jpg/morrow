@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import ProductFrameImage from '../components/ProductFrameImage'
 import { getStoredAuth } from '../utils/authStorage'
 import './ProductCreatePage.css'
 
@@ -18,6 +19,7 @@ const initialForm = {
   price: '',
   category: '',
   image: '',
+  spinImages: [],
   description: '',
 }
 
@@ -106,6 +108,8 @@ function ProductCreatePage() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [message, setMessage] = useState({ type: '', text: '' })
   const uploadWidgetRef = useRef(null)
+  const spinUploadWidgetRef = useRef(null)
+  const spinUploadBatchRef = useRef([])
 
   const currentUser = auth?.user
   const isAdmin = typeof currentUser?.user_type === 'string'
@@ -131,6 +135,7 @@ function ProductCreatePage() {
           price: Number.isFinite(Number(product.price)) ? String(product.price) : '',
           category: product.category || '',
           image: product.image || '',
+          spinImages: Array.isArray(product.spinImages) ? product.spinImages.filter(Boolean) : [],
           description: product.description || '',
         })
         setDidProductLoadFail(false)
@@ -211,10 +216,87 @@ function ProductCreatePage() {
     }
   }
 
+  async function openSpinUploadWidget() {
+    setMessage({ type: '', text: '' })
+
+    if (!auth?.token || !isAdmin) {
+      setMessage({ type: 'error', text: '관리자 계정으로 로그인한 뒤 이미지를 업로드해 주세요.' })
+      return
+    }
+
+    if (missingCloudinaryEnv.length) {
+      setMessage({ type: 'error', text: `Cloudinary 환경변수를 설정해 주세요: ${missingCloudinaryEnv.join(', ')}` })
+      return
+    }
+
+    if (form.spinImages.length >= 48) {
+      setMessage({ type: 'error', text: '360도 이미지는 최대 48장까지 등록할 수 있습니다.' })
+      return
+    }
+
+    try {
+      setIsWidgetLoading(true)
+      const cloudinary = await loadCloudinaryWidget()
+
+      if (!spinUploadWidgetRef.current) {
+        spinUploadWidgetRef.current = cloudinary.createUploadWidget({
+          cloudName: CLOUDINARY_CLOUD_NAME,
+          uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+          sources: ['local', 'url'],
+          multiple: true,
+          maxFiles: 48,
+          resourceType: 'image',
+          clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+          maxImageFileSize: 10 * 1024 * 1024,
+        }, (error, result) => {
+          if (error) {
+            setMessage({ type: 'error', text: '360도 이미지 업로드 중 오류가 발생했습니다.' })
+            return
+          }
+
+          if (result?.event === 'success' && result.info?.secure_url) {
+            spinUploadBatchRef.current.push({
+              name: result.info.original_filename || result.info.public_id || '',
+              url: result.info.secure_url,
+            })
+          }
+
+          if (result?.event === 'queues-end' && spinUploadBatchRef.current.length) {
+            const uploadedImages = [...spinUploadBatchRef.current]
+              .sort((first, second) => first.name.localeCompare(second.name, undefined, { numeric: true }))
+              .map((item) => item.url)
+
+            setForm((current) => ({
+              ...current,
+              spinImages: [...new Set([...current.spinImages, ...uploadedImages])].slice(0, 48),
+            }))
+            setMessage({ type: 'success', text: `${uploadedImages.length}장의 360도 프레임을 추가했습니다.` })
+            spinUploadBatchRef.current = []
+          }
+        })
+      }
+
+      spinUploadBatchRef.current = []
+      spinUploadWidgetRef.current.open()
+    } catch (error) {
+      setMessage({ type: 'error', text: error.message || 'Cloudinary 위젯을 열지 못했습니다.' })
+      cloudinaryWidgetScriptPromise = undefined
+    } finally {
+      setIsWidgetLoading(false)
+    }
+  }
+
   function removeImage() {
     setForm((current) => ({ ...current, image: '' }))
     setFileName('')
     setMessage({ type: '', text: '' })
+  }
+
+  function removeSpinImage(indexToRemove) {
+    setForm((current) => ({
+      ...current,
+      spinImages: current.spinImages.filter((_, index) => index !== indexToRemove),
+    }))
   }
 
   async function handleSubmit(event) {
@@ -255,6 +337,7 @@ function ProductCreatePage() {
           price: Number(form.price),
           category: form.category,
           image: form.image,
+          spinImages: form.spinImages,
           description: form.description.trim(),
         }),
       })
@@ -366,6 +449,38 @@ function ProductCreatePage() {
                   <button type="button" onClick={removeImage}>삭제</button>
                 </div>
               ) : <div className="product-image-empty" aria-hidden="true" />}
+            </section>
+
+            <section className="product-create-card product-spin-card">
+              <div className="product-spin-heading">
+                <div>
+                  <h2>360도 어라운드 뷰 <span>(선택)</span></h2>
+                  <p>같은 높이와 배경에서 촬영한 이미지를 파일명 번호순으로 선택해 주세요.</p>
+                </div>
+                <button type="button" onClick={openSpinUploadWidget} disabled={isWidgetLoading || isLoadingProduct || form.spinImages.length >= 48}>
+                  <Icon name="upload" size={17} /> 프레임 추가
+                </button>
+              </div>
+
+              {form.spinImages.length ? (
+                <>
+                  <div className="product-spin-summary"><strong>{form.spinImages.length}장 등록됨</strong><span>권장 24~36장 · 최대 48장</span></div>
+                  <div className="product-spin-frames">
+                    {form.spinImages.map((image, index) => (
+                      <figure key={`${image}-${index}`}>
+                        <ProductFrameImage source={image} alt={`360도 프레임 ${index + 1}`} />
+                        <figcaption>{String(index + 1).padStart(2, '0')}</figcaption>
+                        <button type="button" aria-label={`${index + 1}번 프레임 삭제`} onClick={() => removeSpinImage(index)}>×</button>
+                      </figure>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="product-spin-empty">
+                  <strong>등록된 360도 이미지가 없습니다.</strong>
+                  <span>프레임을 2장 이상 등록하면 상품 상세 화면에 360도 뷰가 표시됩니다.</span>
+                </div>
+              )}
             </section>
           </form>
         </main>

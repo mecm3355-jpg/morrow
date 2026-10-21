@@ -11,6 +11,8 @@
 /.tmp-*/
 /home-actual.png
 /login-actual.png
+/output/
+/tmp/
 
 # Operating system files
 .DS_Store

@@ -81,14 +81,23 @@ test('상품 수정은 허용된 필드만 저장하고 갱신된 상품을 반�
 
   const request = {
     params: { id: '507f1f77bcf86cd799439011' },
-    body: { name: '수정 상품', price: 20000, unexpected: '제외' },
+    body: {
+      name: '수정 상품',
+      price: 20000,
+      spinImages: ['https://example.com/frame-01.webp', 'https://example.com/frame-02.webp'],
+      unexpected: '제외',
+    },
   };
   const response = createResponse();
 
   try {
     await updateProduct(request, response);
     assert.equal(response.statusCode, 200);
-    assert.deepEqual(receivedUpdate, { name: '수정 상품', price: 20000 });
+    assert.deepEqual(receivedUpdate, {
+      name: '수정 상품',
+      price: 20000,
+      spinImages: ['https://example.com/frame-01.webp', 'https://example.com/frame-02.webp'],
+    });
     assert.deepEqual(receivedOptions, { new: true, runValidators: true });
   } finally {
     Product.findByIdAndUpdate = originalFindByIdAndUpdate;

@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom'
 import AnnouncementBar from '../components/AnnouncementBar'
 import ArrowIcon from '../components/ArrowIcon'
 import Header from '../components/Header'
+import ProductMediaViewer from '../components/ProductMediaViewer'
 import { clearStoredAuth, getStoredAuth, saveStoredAuth } from '../utils/authStorage'
 import './ProductDetailPage.css'
 
@@ -244,15 +245,7 @@ function ProductDetailPage() {
 
         <section className="product-detail-overview" aria-labelledby="product-detail-title">
           <div className="product-detail-gallery">
-            <div className="product-detail-thumbs" aria-label="상품 이미지 목록">
-              <button className="is-active" type="button" aria-label="상품 이미지 1" aria-pressed="true">
-                <img src={product.image} alt="" />
-              </button>
-            </div>
-            <div className="product-detail-main-image">
-              <img src={product.image} alt={product.name} fetchPriority="high" />
-              <span>01 / 01</span>
-            </div>
+            <ProductMediaViewer key={product._id} product={product} />
           </div>
 
           <div className="product-detail-summary">

@@ -25,3 +25,7 @@ npm.cmd run dev
 const response = await fetch('/api/health')
 const data = await response.json()
 ```
+
+## 포트원 결제 설정
+
+클라이언트 `.env`의 `VITE_PORTONE_MERCHANT_CODE`에 포트원 콘솔의 V1 고객사 식별코드를 입력합니다. 이 값은 브라우저에 공개되는 식별자이며 서버의 `PORTONE_MERCHANT_CODE`와 반드시 같아야 합니다.

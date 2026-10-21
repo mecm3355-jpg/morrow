@@ -41,10 +41,10 @@
 }
 
 .product-detail-gallery {
-  display: grid;
+  display: flex;
   min-width: 0;
-  grid-template-columns: 70px minmax(0, 1fr);
-  gap: 15px;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .product-detail-thumbs {
@@ -54,6 +54,7 @@
 }
 
 .product-detail-thumbs button {
+  display: grid;
   width: 70px;
   aspect-ratio: 1;
   overflow: hidden;
@@ -62,6 +63,7 @@
   border-radius: 9px;
   background: #eceaf0;
   cursor: pointer;
+  place-items: center;
 }
 
 .product-detail-thumbs button.is-active {
@@ -70,7 +72,8 @@
 }
 
 .product-detail-thumbs img,
-.product-detail-main-image img,
+.product-detail-thumbs .product-frame-image,
+.product-detail-main-image .product-frame-image,
 .product-detail-feature-grid img,
 .product-detail-story-hero img,
 .product-detail-spec-image img,
@@ -81,7 +84,8 @@
   object-fit: contain;
 }
 
-.product-detail-thumbs img { padding: 7px; }
+.product-detail-thumbs .product-frame-image { padding: 7px; }
+.product-detail-thumbs .product-frame-image.is-sprite { width: calc(100% - 14px); height: auto; max-height: calc(100% - 14px); margin: 7px; padding: 0; background-repeat: no-repeat; }
 .product-detail-thumbs button:nth-child(2) img { transform: scale(1.18); }
 .product-detail-thumbs button:nth-child(3) img { transform: translateY(4px) scale(.92); }
 .product-detail-thumbs button:nth-child(4) { background: #302d39; }
@@ -112,12 +116,21 @@
   filter: blur(28px);
 }
 
-.product-detail-main-image img {
+.product-detail-main-image .product-frame-image {
   position: relative;
   z-index: 1;
   padding: 9%;
   filter: drop-shadow(0 22px 26px rgb(45 36 55 / 17%));
   transition: transform 400ms ease, filter 400ms ease;
+}
+
+.product-detail-main-image .product-frame-image.is-sprite {
+  width: 82%;
+  height: auto;
+  max-height: 82%;
+  padding: 0;
+  background-repeat: no-repeat;
+  filter: drop-shadow(0 22px 26px rgb(45 36 55 / 17%));
 }
 
 .product-detail-main-image--1 img { transform: scale(1.08); }
@@ -126,6 +139,7 @@
 .product-detail-main-image--3 img { filter: drop-shadow(0 24px 28px rgb(0 0 0 / 30%)) brightness(.88); }
 .product-detail-main-image--4 img { transform: scale(1.2); }
 .product-detail-main-image > span { position: absolute; z-index: 2; right: 17px; bottom: 15px; color: #8c8792; font-size: 8px; font-weight: 800; letter-spacing: .08em; }
+
 
 .product-detail-summary {
   position: sticky;
@@ -382,6 +396,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .product-detail-main-image img,
+  .product-detail-main-image .product-frame-image,
   .product-detail-actions button { transition: none; }
 }

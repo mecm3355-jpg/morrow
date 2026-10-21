@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const Product = require('../models/product.model');
 
-const productFields = ['sku', 'name', 'price', 'category', 'image', 'description'];
+const productFields = ['sku', 'name', 'price', 'category', 'image', 'spinImages', 'description'];
 const requiredProductFields = ['sku', 'name', 'price', 'category', 'image'];
 const PRODUCTS_PER_PAGE = 10;
 
