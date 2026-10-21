@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { getStoredAuth } from '../utils/authStorage'
+import { clearStoredAuth, getStoredAuth } from '../utils/authStorage'
 import Navbar from './Navbar'
 import './Header.css'
 
@@ -14,9 +14,14 @@ function Header({ user = null, onLogout = null }) {
   const userMenuRef = useRef(null)
   const userMenuButtonRef = useRef(null)
   const mobileMenuButtonRef = useRef(null)
+  const onLogoutRef = useRef(onLogout)
   const userType = typeof user?.user_type === 'string' ? user.user_type.trim().toLowerCase() : ''
   const isAdmin = userType === 'admin'
   const displayedCartItemCount = user ? cartItemCount : 0
+
+  useEffect(() => {
+    onLogoutRef.current = onLogout
+  }, [onLogout])
 
   useEffect(() => {
     if (!user) return undefined
@@ -34,7 +39,16 @@ function Header({ user = null, onLogout = null }) {
           },
         })
         const data = await response.json().catch(() => ({}))
-        if (active && response.ok) setCartItemCount(Number(data.summary?.totalQuantity) || 0)
+        if (!active) return
+
+        if (response.status === 401) {
+          clearStoredAuth()
+          setCartItemCount(0)
+          onLogoutRef.current?.()
+          return
+        }
+
+        if (response.ok) setCartItemCount(Number(data.summary?.totalQuantity) || 0)
       } catch (error) {
         if (active) console.error('장바구니 수량을 가져오지 못했습니다.', error)
       }
