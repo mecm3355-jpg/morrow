@@ -137,6 +137,7 @@
 
 .header-user-dropdown {
   position: absolute;
+  z-index: 30;
   top: calc(100% + 8px);
   right: 0;
   width: 126px;
@@ -145,6 +146,8 @@
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 16px 34px rgb(38 33 64 / 14%);
+  transform-origin: top right;
+  animation: header-dropdown-curtain 180ms ease-out both;
 }
 
 .header-user-dropdown button {
@@ -162,6 +165,24 @@
 
 .header-user-dropdown button:hover {
   background: #fff0f2;
+}
+
+@keyframes header-dropdown-curtain {
+  from {
+    opacity: 0;
+    transform: translateY(-5px) scaleY(.82);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .header-user-dropdown {
+    animation: none;
+  }
 }
 
 .header-login,

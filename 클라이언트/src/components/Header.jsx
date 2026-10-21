@@ -104,11 +104,11 @@ function Header({ user = null, onLogout = null }) {
 
         {user ? (
           <div className="header-user-menu" ref={userMenuRef}>
-            <button className="header-greeting" type="button" ref={userMenuButtonRef} aria-expanded={isUserMenuOpen} aria-controls="header-user-dropdown" onClick={() => setIsUserMenuOpen((current) => !current)}>
+            <button className="header-greeting" type="button" ref={userMenuButtonRef} aria-expanded={isUserMenuOpen} aria-haspopup="menu" aria-controls="header-user-dropdown" onClick={() => setIsUserMenuOpen((current) => !current)}>
               <span><strong>{user.name || '회원'}</strong>님 환영합니다</span>
               <span className={`header-greeting-arrow ${isUserMenuOpen ? 'open' : ''}`} aria-hidden="true">▾</span>
             </button>
-            {isUserMenuOpen ? <div className="header-user-dropdown" id="header-user-dropdown"><button type="button" onClick={handleLogout}>로그아웃</button></div> : null}
+            {isUserMenuOpen ? <div className="header-user-dropdown" id="header-user-dropdown" role="menu"><button type="button" role="menuitem" onClick={handleLogout}>로그아웃</button></div> : null}
           </div>
         ) : <Link className="header-login" to="/login">로그인</Link>}
       </div>
