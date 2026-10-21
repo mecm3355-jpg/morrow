@@ -57,10 +57,10 @@ function useLoginForm() {
         user: data.user,
       })
       const requestedPath = location.state?.from
-      const isAdmin = data.user?.user_type?.trim().toLowerCase() === 'admin'
-      const destination = isAdmin && typeof requestedPath === 'string' && requestedPath.startsWith('/admin')
-        ? requestedPath
-        : '/'
+      const isSafeRequestedPath = typeof requestedPath === 'string'
+        && requestedPath.startsWith('/')
+        && !requestedPath.startsWith('//')
+      const destination = isSafeRequestedPath ? requestedPath : '/'
 
       navigate(destination, destination === '/'
         ? { replace: true, state: { toastMessage: `${data.user?.name || '회원'}님, 환영합니다.` } }

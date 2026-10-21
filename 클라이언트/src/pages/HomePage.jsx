@@ -1,22 +1,22 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import ArrowIcon from '../components/ArrowIcon'
+import AnnouncementBar from '../components/AnnouncementBar'
 import Header from '../components/Header'
-import heroImage from '../assets/morrow-hero-v2.webp'
+import heroImage from '../assets/morrow-hero-men-lifestyle.png'
 import productSheet from '../assets/morrow-products.webp'
-import storyImage from '../assets/morrow-story.webp'
+import storyImage from '../assets/morrow-story-men-lifestyle.png'
 import { clearStoredAuth, getStoredAuth, saveStoredAuth } from '../utils/authStorage'
 import './HomePage.css'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 const PRODUCT_SHEET_STYLE = { '--product-sheet': `url(${productSheet})` }
 
-const categories = [
-  { name: '조명', description: '공간의 온도를 바꾸는 빛', image: 'lamp' },
-  { name: '키친', description: '매일 손이 가는 테이블웨어', image: 'cup' },
-  { name: '데스크', description: '몰입을 돕는 작은 도구', image: 'notebook' },
-  { name: '향기', description: '장면을 기억하게 하는 향', image: 'candle' },
-]
+const categoryDescriptions = {
+  상의: '오늘의 인상을 만드는 편안한 실루엣',
+  하의: '자연스러운 움직임을 위한 균형',
+  악세사리: '일상의 취향을 완성하는 작은 디테일',
+}
 
 const MemoizedHeader = memo(Header)
 
@@ -38,6 +38,7 @@ function ProductCard({ product, compact = false }) {
 
   return (
     <article className={`product-card ${compact ? 'product-card--compact' : ''}`}>
+      <Link className="product-card-click-target" to={`/products/${product._id}`} aria-label={`${product.name} 상세페이지로 이동`} />
       <div className="product-card-visual">
         <span className="product-badge">{product.badge || product.category || 'ITEM'}</span>
         <button className={`wish-button${isWished ? ' is-active' : ''}`} type="button" aria-label={`${product.name} ${isWished ? '찜 해제' : '찜하기'}`} aria-pressed={isWished} onClick={() => setIsWished((current) => !current)}>
@@ -115,9 +116,7 @@ function HomeSession() {
 
   return (
     <>
-      <div className="announcement-bar">
-        <span>오늘 가입하면 첫 구매 10% 할인</span><span aria-hidden="true">·</span><span>5만원 이상 무료배송</span>
-      </div>
+      <AnnouncementBar />
       <MemoizedHeader user={currentUser} onLogout={handleLogout} />
 
       {toastMessage ? (
@@ -176,6 +175,13 @@ function HomePage() {
       : products.filter((product) => product.category === activeCategory),
     [activeCategory, products],
   )
+  const categoryCards = useMemo(() => productCategories
+    .filter((category) => category !== '전체')
+    .map((category) => ({
+      name: category,
+      description: categoryDescriptions[category] || '매일 손이 가는 좋은 선택',
+      image: products.find((product) => product.category === category)?.image || '',
+    })), [productCategories, products])
   const newArrivals = products.slice(0, 3)
 
   return (
@@ -184,15 +190,15 @@ function HomePage() {
 
       <main>
         <section className="home-hero" aria-labelledby="home-hero-title">
-          <img src={heroImage} alt="세라믹 화병과 유리잔이 놓인 차분한 공간" decoding="async" fetchPriority="high" />
+          <img src={heroImage} alt="크림색 니트와 차콜 팬츠를 입고 골목을 걷는 남성" decoding="async" fetchPriority="high" />
           <div className="home-hero-shade" />
           <div className="home-hero-copy">
             <p className="section-kicker">2026 NEW COLLECTION</p>
-            <h1 id="home-hero-title">가을의 온도를<span>집 안으로.</span></h1>
-            <p>오래 바라봐도 좋은 물건과 함께<br />나만의 속도로 채우는 일상을 만나보세요.</p>
+            <h1 id="home-hero-title">오늘 고른 스타일이<span>내일의 취향이 됩니다.</span></h1>
+            <p>매일 손이 가는 옷과 액세서리로<br />나다운 스타일을 완성해 보세요.</p>
             <div className="home-hero-actions">
-              <a className="primary-button" href="#products">컬렉션 쇼핑하기 <ArrowIcon /></a>
-              <a className="secondary-link" href="#brand-story">브랜드 이야기</a>
+              <a className="primary-button" href="#products">오늘의 셀렉션 보기 <ArrowIcon /></a>
+              <a className="secondary-link" href="#brand-story">morrow 이야기</a>
             </div>
           </div>
           <div className="hero-stats" aria-label="morrow 서비스 정보">
@@ -215,9 +221,9 @@ function HomePage() {
             <a href="#products">전체 보기 <span aria-hidden="true">↗</span></a>
           </div>
           <div className="category-grid">
-            {categories.map((category) => (
-              <a className="category-card" href="#products" key={category.name}>
-                <ProductImage type={category.image} alt={`${category.name} 카테고리`} />
+            {categoryCards.map((category) => (
+              <a className="category-card" href="#products" key={category.name} onClick={() => setActiveCategory(category.name)}>
+                <ProductImage src={category.image} alt={`${category.name} 카테고리`} />
                 <div><h3>{category.name}</h3><p>{category.description}</p></div><span aria-hidden="true">↗</span>
               </a>
             ))}
@@ -245,7 +251,7 @@ function HomePage() {
         </section>
 
         <section className="brand-story" id="brand-story" aria-labelledby="brand-story-title">
-          <img src={storyImage} alt="따뜻한 햇살이 드는 미니멀한 거실" decoding="async" loading="lazy" />
+          <img src={storyImage} alt="카페 앞에서 니트 소매를 정리하는 남성과 크로스백" decoding="async" loading="lazy" />
           <div className="brand-story-panel">
             <p className="section-kicker">MORROW STORY</p>
             <h2 id="brand-story-title">매일의 장면을 조금 더 나답게.</h2>

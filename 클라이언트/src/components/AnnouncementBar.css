@@ -1,0 +1,21 @@
+.announcement-bar {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 7px 20px;
+  color: #fff;
+  background: #5940ef;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .announcement-bar {
+    gap: 8px;
+    font-size: 10px;
+  }
+}

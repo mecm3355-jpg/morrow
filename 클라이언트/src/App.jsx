@@ -9,6 +9,8 @@ const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const ProductListPage = lazy(() => import('./pages/ProductListPage'))
 const ProductCreatePage = lazy(() => import('./pages/ProductCreatePage'))
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'))
+const CartPage = lazy(() => import('./pages/CartPage'))
 
 function App() {
   return (
@@ -18,6 +20,8 @@ function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/products/:productId" element={<ProductDetailPage />} />
+          <Route path="/cart" element={<CartPage />} />
           <Route element={<AdminRoute />}>
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/products" element={<ProductListPage />} />

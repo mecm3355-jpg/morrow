@@ -18,6 +18,10 @@
   display: none;
 }
 
+.main-nav-cart {
+  display: none;
+}
+
 @media (max-width: 900px) {
   .main-nav {
     grid-row: 1;
@@ -52,4 +56,6 @@
   .main-nav a { padding: 11px 12px; border-radius: 9px; }
   .main-nav a:hover { background: #f4f1ff; }
   .main-nav-admin { display: block; color: #5138f5; font-weight: 800; }
+  .main-nav-cart { display: flex; align-items: center; justify-content: space-between; color: #5138f5; font-weight: 800; }
+  .main-nav-cart strong { display: grid; min-width: 23px; height: 23px; place-items: center; padding: 0 6px; border-radius: 999px; color: #fff; background: #5138f5; font-size: 9px; }
 }

@@ -1,8 +1,11 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
 
 const User = require('../models/user.model');
+const {
+  createLoginToken,
+  getTokenExpiresIn,
+} = require('../services/auth-token.service');
 
 const userFields = ['email', 'name', 'password', 'user_type', 'address'];
 const updatableUserFields = ['email', 'name', 'password', 'address'];
@@ -10,7 +13,6 @@ const requiredUserFields = ['email', 'name', 'password', 'user_type'];
 const publicUserTypes = ['customer', 'seller'];
 const passwordMinLength = 8;
 const passwordSaltRounds = 12;
-const defaultTokenExpiresIn = '1h';
 
 function pickUserFields(body) {
   return userFields.reduce((userData, field) => {
@@ -40,28 +42,6 @@ function userWithoutPassword(user) {
 
 function isValidUserId(id) {
   return mongoose.isObjectIdOrHexString(id);
-}
-
-function createLoginToken(user) {
-  const jwtSecret = process.env.JWT_SECRET;
-
-  if (!jwtSecret) {
-    const error = new Error('서버 인증 설정이 올바르지 않습니다.');
-    error.status = 500;
-    throw error;
-  }
-
-  return jwt.sign(
-    {
-      email: user.email,
-      user_type: user.user_type,
-    },
-    jwtSecret,
-    {
-      subject: user._id.toString(),
-      expiresIn: process.env.JWT_EXPIRES_IN || defaultTokenExpiresIn,
-    },
-  );
 }
 
 async function createUser(req, res) {
@@ -132,7 +112,7 @@ async function loginUser(req, res) {
     message: '로그인에 성공했습니다.',
     token,
     tokenType: 'Bearer',
-    expiresIn: process.env.JWT_EXPIRES_IN || defaultTokenExpiresIn,
+    expiresIn: getTokenExpiresIn(),
     user: userWithoutPassword(user),
   });
 }

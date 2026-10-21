@@ -1,8 +1,11 @@
-const jwt = require('jsonwebtoken');
+const {
+  extractBearerToken,
+  verifyLoginToken,
+} = require('../services/auth-token.service');
 
 function authenticateUser(req, res, next) {
   const authorization = req.get('authorization') ?? '';
-  const bearerToken = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
+  const bearerToken = extractBearerToken(authorization);
 
   if (!bearerToken) {
     return res.status(401).json({
@@ -10,14 +13,8 @@ function authenticateUser(req, res, next) {
     });
   }
 
-  if (!process.env.JWT_SECRET) {
-    const error = new Error('서버 인증 설정이 올바르지 않습니다.');
-    error.status = 500;
-    return next(error);
-  }
-
   try {
-    const payload = jwt.verify(bearerToken, process.env.JWT_SECRET);
+    const payload = verifyLoginToken(bearerToken);
 
     if (!payload.sub) {
       return res.status(401).json({

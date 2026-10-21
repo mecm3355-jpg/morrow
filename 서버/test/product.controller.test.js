@@ -23,7 +23,7 @@ function createResponse() {
   };
 }
 
-test('상품 목록은 한 페이지에 최대 2개를 반환한다', async () => {
+test('상품 목록은 한 페이지에 최대 10개를 반환한다', async () => {
   const originals = {
     countDocuments: Product.countDocuments,
     distinct: Product.distinct,
@@ -44,7 +44,7 @@ test('상품 목록은 한 페이지에 최대 2개를 반환한다', async () =
     skip() { return this; },
     limit(limit) {
       requestedLimit = limit;
-      return Promise.resolve([{ name: '상품 1' }, { name: '상품 2' }]);
+      return Promise.resolve(Array.from({ length: 5 }, (_, index) => ({ name: `상품 ${index + 1}` })));
     },
   });
 
@@ -54,15 +54,15 @@ test('상품 목록은 한 페이지에 최대 2개를 반환한다', async () =
   try {
     await getProducts(request, response);
     assert.equal(response.statusCode, 200);
-    assert.equal(requestedLimit, 2);
-    assert.equal(response.body.products.length, 2);
+    assert.equal(requestedLimit, 10);
+    assert.equal(response.body.products.length, 5);
     assert.deepEqual(response.body.pagination, {
-      page: 2,
-      pageSize: 2,
+      page: 1,
+      pageSize: 10,
       total: 5,
-      totalPages: 3,
-      hasPreviousPage: true,
-      hasNextPage: true,
+      totalPages: 1,
+      hasPreviousPage: false,
+      hasNextPage: false,
     });
   } finally {
     Object.assign(Product, originals);

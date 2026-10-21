@@ -4,7 +4,7 @@ const Product = require('../models/product.model');
 
 const productFields = ['sku', 'name', 'price', 'category', 'image', 'description'];
 const requiredProductFields = ['sku', 'name', 'price', 'category', 'image'];
-const PRODUCTS_PER_PAGE = 2;
+const PRODUCTS_PER_PAGE = 10;
 
 function pickProductFields(body = {}) {
   return productFields.reduce((productData, field) => {
