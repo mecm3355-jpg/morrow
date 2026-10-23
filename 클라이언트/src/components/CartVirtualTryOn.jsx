@@ -58,6 +58,8 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
   const [isAiGenerating, setIsAiGenerating] = useState(false)
   const [isAiRevealing, setIsAiRevealing] = useState(false)
   const objectUrlRef = useRef('')
+  const resultCacheRef = useRef(new Map())
+  const activeResultKeyRef = useRef('')
   const productDragRef = useRef(null)
   const suppressClickRef = useRef(false)
   const closeButtonRef = useRef(null)
@@ -65,10 +67,12 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
   function clearAiResult() {
     setAiImageUrl('')
     setIsAiRevealing(false)
+    activeResultKeyRef.current = ''
   }
 
   useEffect(() => () => {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
+    resultCacheRef.current.clear()
   }, [])
 
   useEffect(() => {
@@ -252,6 +256,19 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
       return
     }
 
+    const resultKey = JSON.stringify([
+      photoUrl,
+      outfitProducts.map((product) => `${product.slot}:${product.key}`).sort(),
+    ])
+    const cachedImageUrl = resultCacheRef.current.get(resultKey)
+    if (cachedImageUrl) {
+      activeResultKeyRef.current = resultKey
+      setError('')
+      setIsAiRevealing(true)
+      setAiImageUrl(cachedImageUrl)
+      return
+    }
+
     setIsAiGenerating(true)
     setError('')
     try {
@@ -270,6 +287,8 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
       const data = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(data.message || '무료 AI 가상 착장에 실패했습니다.')
       if (!data.imageUrl) throw new Error('AI 결과 이미지를 받지 못했습니다.')
+      resultCacheRef.current.set(resultKey, data.imageUrl)
+      activeResultKeyRef.current = resultKey
       setIsAiRevealing(true)
       setAiImageUrl(data.imageUrl)
     } catch (generationError) {
@@ -308,6 +327,10 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
                 window.setTimeout(() => setIsAiRevealing(false), 80)
               }}
               onError={aiImageUrl ? () => {
+                if (activeResultKeyRef.current) {
+                  resultCacheRef.current.delete(activeResultKeyRef.current)
+                  activeResultKeyRef.current = ''
+                }
                 setAiImageUrl('')
                 setIsAiRevealing(false)
                 setError('AI 결과 이미지를 불러오지 못했습니다. 다시 생성해 주세요.')
@@ -370,7 +393,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
               <button type="button" disabled={isAiGenerating} onClick={generateAiOutfit}>
                 {isAiGenerating ? '무료 Turbo AI 생성 중...' : (aiImageUrl ? '무료 Turbo AI 다시 생성' : '무료 Turbo AI 전체 착장 생성')}
               </button>
-              <small>무료 공개 GPU라 대기하거나 일일 할당량이 끝날 수 있습니다. 연구·평가용 실험 기능입니다.</small>
+              <small>같은 사진과 코디는 세션 결과를 재사용합니다. 무료 공개 GPU라 대기하거나 일일 할당량이 끝날 수 있습니다.</small>
             </div>
 
             <button className="virtual-tryon-reset" type="button" onClick={resetOutfit}>AI 코디 선택 초기화</button>
