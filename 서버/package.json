@@ -11,9 +11,10 @@
     "test": "node --test --test-isolation=none"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
+    "ai": "^7.0.150",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",

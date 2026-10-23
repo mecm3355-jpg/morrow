@@ -83,7 +83,7 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error(err);
   const status = err.status ?? 500;
-  const shouldHideDetails = status >= 500 && app.get('env') === 'production';
+  const shouldHideDetails = status >= 500 && app.get('env') === 'production' && !err.expose;
 
   res.status(status).json({
     message: shouldHideDetails
