@@ -10,7 +10,26 @@ import './CartVirtualTryOn.css'
 
 const DEFAULT_MANNEQUIN_URL = '/products/around/mannequin-front.png'
 const MAX_PHOTO_SIZE = 10 * 1024 * 1024
+const MAX_RESULT_CACHE_ENTRIES = 8
+const RESULT_CACHE_VERSION = 'binary-v1'
 const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
+const resultBlobCache = new Map()
+
+function getCachedResult(key) {
+  const blob = resultBlobCache.get(key)
+  if (!blob) return null
+  resultBlobCache.delete(key)
+  resultBlobCache.set(key, blob)
+  return blob
+}
+
+function cacheResult(key, blob) {
+  resultBlobCache.delete(key)
+  resultBlobCache.set(key, blob)
+  while (resultBlobCache.size > MAX_RESULT_CACHE_ENTRIES) {
+    resultBlobCache.delete(resultBlobCache.keys().next().value)
+  }
+}
 
 function getProductKey(item) {
   return String(item.product?._id || item.product || item._id)
@@ -49,6 +68,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
   const [placements, setPlacements] = useState(() => createPlacements(products))
   const [selectedId, setSelectedId] = useState(products[0]?.key || '')
   const [photoUrl, setPhotoUrl] = useState(DEFAULT_MANNEQUIN_URL)
+  const [photoCacheKey, setPhotoCacheKey] = useState('mannequin:v1')
   const [photoName, setPhotoName] = useState('기본 마네킹')
   const [isUsingMannequin, setIsUsingMannequin] = useState(true)
   const [error, setError] = useState('')
@@ -56,23 +76,36 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
   const [dragPreview, setDragPreview] = useState(null)
   const [aiImageUrl, setAiImageUrl] = useState('')
   const [isAiGenerating, setIsAiGenerating] = useState(false)
+  const [aiGenerationLabel, setAiGenerationLabel] = useState('')
   const [isAiRevealing, setIsAiRevealing] = useState(false)
   const objectUrlRef = useRef('')
-  const resultCacheRef = useRef(new Map())
+  const aiImageObjectUrlRef = useRef('')
   const activeResultKeyRef = useRef('')
   const productDragRef = useRef(null)
   const suppressClickRef = useRef(false)
   const closeButtonRef = useRef(null)
 
   function clearAiResult() {
+    if (aiImageObjectUrlRef.current) {
+      URL.revokeObjectURL(aiImageObjectUrlRef.current)
+      aiImageObjectUrlRef.current = ''
+    }
     setAiImageUrl('')
     setIsAiRevealing(false)
     activeResultKeyRef.current = ''
   }
 
+  function showAiResult(blob, resultKey) {
+    if (aiImageObjectUrlRef.current) URL.revokeObjectURL(aiImageObjectUrlRef.current)
+    aiImageObjectUrlRef.current = URL.createObjectURL(blob)
+    activeResultKeyRef.current = resultKey
+    setIsAiRevealing(true)
+    setAiImageUrl(aiImageObjectUrlRef.current)
+  }
+
   useEffect(() => () => {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
-    resultCacheRef.current.clear()
+    if (aiImageObjectUrlRef.current) URL.revokeObjectURL(aiImageObjectUrlRef.current)
   }, [])
 
   useEffect(() => {
@@ -183,6 +216,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
       if (!cancelled && isPointOverStage(event.clientX, event.clientY)) {
         fitProduct(drag.product)
         setError('')
+        void generateAiOutfit([drag.product])
       }
       suppressClickRef.current = true
       window.setTimeout(() => { suppressClickRef.current = false }, 0)
@@ -213,6 +247,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
     objectUrlRef.current = URL.createObjectURL(file)
     setPhotoUrl(objectUrlRef.current)
+    setPhotoCacheKey(`local:${file.name}:${file.size}:${file.lastModified}`)
     setPhotoName(file.name)
     setIsUsingMannequin(false)
     clearAiResult()
@@ -225,6 +260,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
       objectUrlRef.current = ''
     }
     setPhotoUrl(DEFAULT_MANNEQUIN_URL)
+    setPhotoCacheKey('mannequin:v1')
     setPhotoName('기본 마네킹')
     setIsUsingMannequin(true)
     clearAiResult()
@@ -237,39 +273,50 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     setSelectedId(products[0]?.key || '')
   }
 
-  async function generateAiOutfit() {
+  async function generateAiOutfit(productsOverride) {
+    if (isAiGenerating) return
+
     const auth = getStoredAuth()
     if (!auth) {
       setError('무료 AI 가상 착장은 로그인 후 사용할 수 있습니다.')
       return
     }
 
+    const isSingleProductTryOn = Array.isArray(productsOverride)
     const selectedBySlot = new Map()
-    products.forEach((product) => {
-      if (placements[product.key]?.visible && !selectedBySlot.has(product.slot)) {
-        selectedBySlot.set(product.slot, product)
-      }
-    })
-    const outfitProducts = [...selectedBySlot.values()]
+    if (!isSingleProductTryOn) {
+      products.forEach((product) => {
+        if (placements[product.key]?.visible && !selectedBySlot.has(product.slot)) {
+          selectedBySlot.set(product.slot, product)
+        }
+      })
+    }
+    const outfitProducts = isSingleProductTryOn
+      ? productsOverride.slice(0, 1)
+      : [...selectedBySlot.values()]
     if (!outfitProducts.length) {
       setError('먼저 착용할 상품을 하나 이상 선택해 주세요.')
       return
     }
 
     const resultKey = JSON.stringify([
-      photoUrl,
-      outfitProducts.map((product) => `${product.slot}:${product.key}`).sort(),
+      RESULT_CACHE_VERSION,
+      photoCacheKey,
+      outfitProducts
+        .map((product) => `${product.slot}:${product.key}:${product.image}`)
+        .sort(),
     ])
-    const cachedImageUrl = resultCacheRef.current.get(resultKey)
-    if (cachedImageUrl) {
-      activeResultKeyRef.current = resultKey
+    const cachedResult = getCachedResult(resultKey)
+    if (cachedResult) {
       setError('')
-      setIsAiRevealing(true)
-      setAiImageUrl(cachedImageUrl)
+      showAiResult(cachedResult, resultKey)
       return
     }
 
     setIsAiGenerating(true)
+    setAiGenerationLabel(isSingleProductTryOn
+      ? `${outfitProducts[0].name} 상품을 입히는 중...`
+      : '선택한 전체 코디를 한 벌로 입히는 중...')
     setError('')
     try {
       const [personImage, outfitBoardImage] = await Promise.all([
@@ -284,17 +331,23 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
         },
         body: JSON.stringify({ personImage, outfitBoardImage }),
       })
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.message || '무료 AI 가상 착장에 실패했습니다.')
-      if (!data.imageUrl) throw new Error('AI 결과 이미지를 받지 못했습니다.')
-      resultCacheRef.current.set(resultKey, data.imageUrl)
-      activeResultKeyRef.current = resultKey
-      setIsAiRevealing(true)
-      setAiImageUrl(data.imageUrl)
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || '무료 AI 가상 착장에 실패했습니다.')
+      }
+      const contentType = response.headers.get('content-type') || ''
+      if (!contentType.startsWith('image/')) {
+        throw new Error('AI가 올바른 결과 이미지를 반환하지 않았습니다.')
+      }
+      const resultBlob = await response.blob()
+      if (!resultBlob.size) throw new Error('AI 결과 이미지를 받지 못했습니다.')
+      cacheResult(resultKey, resultBlob)
+      showAiResult(resultBlob, resultKey)
     } catch (generationError) {
       setError(generationError.message || '무료 AI 가상 착장에 실패했습니다.')
     } finally {
       setIsAiGenerating(false)
+      setAiGenerationLabel('')
     }
   }
 
@@ -328,23 +381,21 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
               }}
               onError={aiImageUrl ? () => {
                 if (activeResultKeyRef.current) {
-                  resultCacheRef.current.delete(activeResultKeyRef.current)
-                  activeResultKeyRef.current = ''
+                  resultBlobCache.delete(activeResultKeyRef.current)
                 }
-                setAiImageUrl('')
-                setIsAiRevealing(false)
+                clearAiResult()
                 setError('AI 결과 이미지를 불러오지 못했습니다. 다시 생성해 주세요.')
               } : undefined}
             />
-            {isAiGenerating ? <span className="cart-tryon-ai-loading">무료 Turbo AI가 선택 상품을 한 벌로 입히는 중...</span> : null}
-            {!aiImageUrl && !isAiGenerating ? <span className="virtual-tryon-drag-hint">상품을 이곳에 놓아 AI 코디에 추가한 뒤 생성 버튼을 눌러 주세요</span> : null}
+            {isAiGenerating ? <span className="cart-tryon-ai-loading">무료 Turbo AI가 {aiGenerationLabel}</span> : null}
+            {!aiImageUrl && !isAiGenerating ? <span className="virtual-tryon-drag-hint">상품을 이곳에 놓으면 해당 상품을 바로 입혀봅니다</span> : null}
           </div>
 
           <aside className="virtual-tryon-panel cart-tryon-panel">
             <div className="cart-tryon-summary">
               <small>장바구니 코디</small>
               <strong>{products.length}개 상품으로 코디 조합하기</strong>
-              <p>상품을 드래그하거나 선택해 AI로 생성할 상의·하의·가방·모자를 정해 주세요.</p>
+              <p>드래그해 놓으면 해당 상품을 바로 입혀보고, 클릭 선택 후 아래 버튼을 누르면 전체 코디를 생성합니다.</p>
             </div>
 
             <div className="cart-tryon-products" aria-label="착장 상품 목록">
@@ -356,13 +407,14 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
                     <button
                       className="cart-tryon-select"
                       type="button"
+                      disabled={isAiGenerating}
                       aria-pressed={isSelected}
                       onClick={() => handleProductClick(product)}
                       onPointerDown={(event) => handleProductPointerDown(event, product)}
                       onPointerMove={handleProductPointerMove}
                       onPointerUp={(event) => finishProductDrag(event)}
                       onPointerCancel={(event) => finishProductDrag(event, true)}
-                      title="착장 화면으로 끌어놓아 AI 코디에 추가"
+                      title="착장 화면으로 끌어놓아 해당 상품 바로 입어보기"
                     >
                       <img src={product.image} alt="" draggable="false" onDragStart={(event) => event.preventDefault()} />
                       <span><small>{product.category}</small><strong>{product.name}</strong></span>
@@ -370,6 +422,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
                     <button
                       className="cart-tryon-visibility"
                       type="button"
+                      disabled={isAiGenerating}
                       aria-label={`${product.name} ${placement?.visible ? 'AI 코디에서 제외' : 'AI 코디에 포함'}`}
                       aria-pressed={placement?.visible}
                       onClick={() => toggleProduct(product)}
@@ -390,10 +443,10 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
             <div className="cart-tryon-ai-box">
               <span aria-hidden="true">AI</span>
               <p><strong>상의 · 하의 · 가방 · 모자 전체 착장</strong><small>Turbo AI가 선택한 상품을 한 번에 몸에 맞춰 생성합니다.</small></p>
-              <button type="button" disabled={isAiGenerating} onClick={generateAiOutfit}>
-                {isAiGenerating ? '무료 Turbo AI 생성 중...' : (aiImageUrl ? '무료 Turbo AI 다시 생성' : '무료 Turbo AI 전체 착장 생성')}
+              <button type="button" disabled={isAiGenerating} onClick={() => generateAiOutfit()}>
+                {isAiGenerating ? '무료 Turbo AI 생성 중...' : '선택한 전체 코디 AI 생성'}
               </button>
-              <small>같은 사진과 코디는 세션 결과를 재사용합니다. 무료 공개 GPU라 대기하거나 일일 할당량이 끝날 수 있습니다.</small>
+              <small>같은 사진과 코디는 페이지를 나가기 전까지 즉시 재사용하며, 새로운 조합만 AI가 생성합니다.</small>
             </div>
 
             <button className="virtual-tryon-reset" type="button" onClick={resetOutfit}>AI 코디 선택 초기화</button>
@@ -407,7 +460,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
         {dragPreview ? (
           <div className="cart-tryon-drag-preview" style={{ left: dragPreview.x, top: dragPreview.y }} aria-hidden="true">
             <img src={dragPreview.product.image} alt="" draggable="false" />
-            <span>AI 코디에 추가</span>
+            <span>놓으면 바로 입어보기</span>
           </div>
         ) : null}
       </section>

@@ -18,12 +18,14 @@
 .cart-tryon-products > div.is-selected { border-color: #9d8dff; background: #f1efff; box-shadow: 0 0 0 2px rgb(81 56 245 / 8%); }
 .cart-tryon-select { display: grid; min-width: 0; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 9px; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
 .cart-tryon-select:active { cursor: grabbing; }
+.cart-tryon-select:disabled { opacity: .55; cursor: wait; }
 .cart-tryon-select img { width: 42px; height: 42px; padding: 3px; border-radius: 8px; background: #ece9ef; object-fit: contain; -webkit-user-drag: none; }
 .cart-tryon-select span { display: grid; min-width: 0; gap: 3px; }
 .cart-tryon-select small { color: #8e8896; font-size: 7px; }
 .cart-tryon-select strong { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .cart-tryon-visibility { display: grid; width: 30px; height: 30px; padding: 0; place-items: center; border: 0; border-radius: 8px; color: #5138f5; background: #ebe7ff; font-size: 10px; cursor: pointer; }
 .cart-tryon-visibility[aria-pressed="false"] { color: #aaa5b0; background: #eeecef; }
+.cart-tryon-visibility:disabled { opacity: .55; cursor: wait; }
 .cart-tryon-photo-control { margin: 15px 0 20px; }
 .cart-tryon-ai-box { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 9px 10px; align-items: center; margin: 0 0 18px; padding: 12px; border: 1px solid #cfc7ff; border-radius: 12px; background: linear-gradient(145deg, #f4f1ff, #fbfaff); }
 .cart-tryon-ai-box > span { display: grid; width: 38px; height: 38px; place-items: center; border-radius: 50%; color: #fff; background: #5138f5; font-size: 9px; font-weight: 950; }

@@ -1,6 +1,8 @@
 const DEFAULT_SPACE_ID = 'hugging-apps/qwen-qwen-image-2-1-turbo';
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const MAX_RESULT_IMAGE_BYTES = 4 * 1024 * 1024;
 const TRY_ON_TIMEOUT_MS = 4 * 60 * 1000;
+const RESULT_DOWNLOAD_TIMEOUT_MS = 30 * 1000;
 
 function createHttpError(message, status) {
   const error = new Error(message);
@@ -25,13 +27,87 @@ function decodeImageDataUrl(value, label) {
   return buffer;
 }
 
-function getGeneratedImageUrl(result) {
+function getGeneratedImageUrl(result, baseUrl = '') {
   const output = result?.data?.[0];
-  if (typeof output === 'string' && /^https:\/\//.test(output)) return output;
-  if (typeof output?.url === 'string') return output.url;
-  if (typeof output?.path === 'string' && /^https:\/\//.test(output.path)) return output.path;
-  if (typeof output?.image?.url === 'string') return output.image.url;
-  return '';
+  const value = typeof output === 'string'
+    ? output
+    : output?.url || output?.path || output?.image?.url || '';
+
+  if (typeof value !== 'string' || !value) return '';
+  try {
+    return new URL(value, baseUrl || undefined).toString();
+  } catch {
+    return '';
+  }
+}
+
+function isAllowedGeneratedImageUrl(imageUrl) {
+  try {
+    const url = new URL(imageUrl);
+    return url.protocol === 'https:' && (
+      url.hostname.endsWith('.hf.space')
+      || url.hostname === 'huggingface.co'
+      || url.hostname.endsWith('.huggingface.co')
+    );
+  } catch {
+    return false;
+  }
+}
+
+async function downloadGeneratedImage(
+  imageUrl,
+  {
+    fetchImpl = fetch,
+    token = process.env.HF_TOKEN,
+    timeoutMs = RESULT_DOWNLOAD_TIMEOUT_MS,
+  } = {},
+) {
+  if (!isAllowedGeneratedImageUrl(imageUrl)) {
+    throw createHttpError('AI 결과 이미지 주소를 확인하지 못했습니다.', 502);
+  }
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const headers = { Accept: 'image/avif,image/webp,image/png,image/jpeg' };
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const response = await fetchImpl(imageUrl, {
+      headers,
+      redirect: 'follow',
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw createHttpError('AI 결과 이미지를 내려받지 못했습니다.', 502);
+    }
+
+    const mimeType = (response.headers.get('content-type') || '')
+      .split(';')[0]
+      .trim()
+      .toLowerCase();
+    if (!['image/avif', 'image/jpeg', 'image/png', 'image/webp'].includes(mimeType)) {
+      throw createHttpError('AI가 올바른 이미지 파일을 반환하지 않았습니다.', 502);
+    }
+
+    const declaredSize = Number(response.headers.get('content-length') || 0);
+    if (declaredSize > MAX_RESULT_IMAGE_BYTES) {
+      throw createHttpError('AI 결과 이미지 용량이 너무 큽니다.', 502);
+    }
+
+    const imageBuffer = Buffer.from(await response.arrayBuffer());
+    if (!imageBuffer.length || imageBuffer.length > MAX_RESULT_IMAGE_BYTES) {
+      throw createHttpError('AI 결과 이미지 용량이 올바르지 않습니다.', 502);
+    }
+
+    return { imageBuffer, mimeType };
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      throw createHttpError('AI 결과 이미지 다운로드 시간이 초과되었습니다.', 504);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 function withTimeout(promise, timeoutMs = TRY_ON_TIMEOUT_MS) {
@@ -86,37 +162,53 @@ async function generateVirtualTryOn(
   const connect = dependencies.connectToSpace || connectToSpace;
   const { client, handleFile } = await connect();
   const prompt = createTryOnPrompt();
+  const downloadImage = dependencies.downloadGeneratedImage || downloadGeneratedImage;
 
-  const result = await withTimeout(client.predict('/generate', {
-    prompt,
-    input_images: [
-      { image: handleFile(personBuffer), caption: null },
-      { image: handleFile(outfitBoardBuffer), caption: null },
-    ],
-    seed: 42,
-    resolution: 1024,
-    aspect_ratio: '3:4',
-  }), dependencies.timeoutMs);
-  const imageUrl = getGeneratedImageUrl(result);
-
-  if (!imageUrl) {
-    throw createHttpError(
-      '무료 AI가 결과 이미지를 만들지 못했습니다. 다른 사진으로 다시 시도해 주세요.',
-      502,
+  try {
+    const result = await withTimeout(client.predict('/generate', {
+      prompt,
+      input_images: [
+        { image: handleFile(personBuffer), caption: null },
+        { image: handleFile(outfitBoardBuffer), caption: null },
+      ],
+      seed: 42,
+      resolution: 1024,
+      aspect_ratio: '3:4',
+    }), dependencies.timeoutMs);
+    const imageUrl = getGeneratedImageUrl(
+      result,
+      client.config?.root || client.config?.root_url || '',
     );
-  }
 
-  return {
-    imageUrl,
-    provider: 'Hugging Face ZeroGPU',
-    model: process.env.HF_SPACE_ID || DEFAULT_SPACE_ID,
-    supports: ['top', 'bottom', 'bag', 'cap'],
-  };
+    if (!imageUrl) {
+      throw createHttpError(
+        '무료 AI가 결과 이미지를 만들지 못했습니다. 다른 사진으로 다시 시도해 주세요.',
+        502,
+      );
+    }
+
+    const { imageBuffer, mimeType } = await downloadImage(imageUrl, {
+      token: process.env.HF_TOKEN,
+      timeoutMs: dependencies.downloadTimeoutMs,
+    });
+
+    return {
+      imageBuffer,
+      mimeType,
+      provider: 'Hugging Face ZeroGPU',
+      model: process.env.HF_SPACE_ID || DEFAULT_SPACE_ID,
+      supports: ['top', 'bottom', 'bag', 'cap'],
+    };
+  } finally {
+    await client.close?.();
+  }
 }
 
 module.exports = {
   createTryOnPrompt,
   decodeImageDataUrl,
+  downloadGeneratedImage,
   generateVirtualTryOn,
   getGeneratedImageUrl,
+  isAllowedGeneratedImageUrl,
 };

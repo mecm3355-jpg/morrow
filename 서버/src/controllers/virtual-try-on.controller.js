@@ -3,7 +3,14 @@ const { generateVirtualTryOn } = require('../services/virtual-try-on.service');
 async function createVirtualTryOn(req, res, next) {
   try {
     const result = await generateVirtualTryOn(req.body ?? {});
-    return res.json(result);
+    res.set({
+      'Cache-Control': 'private, no-store',
+      'Content-Length': String(result.imageBuffer.length),
+      'Content-Type': result.mimeType,
+      'X-Try-On-Model': result.model,
+      'X-Try-On-Provider': result.provider,
+    });
+    return res.send(result.imageBuffer);
   } catch (error) {
     if (!error.status) {
       const message = String(error.message || '');
