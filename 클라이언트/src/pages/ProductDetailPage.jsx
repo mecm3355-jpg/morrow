@@ -5,6 +5,7 @@ import ArrowIcon from '../components/ArrowIcon'
 import Header from '../components/Header'
 import ProductMediaViewer from '../components/ProductMediaViewer'
 import { clearStoredAuth, getStoredAuth, saveStoredAuth } from '../utils/authStorage'
+import { createBuyNowCart } from '../utils/checkout'
 import './ProductDetailPage.css'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -201,7 +202,33 @@ function ProductDetailPage() {
   }
 
   function buyNow() {
-    addToCart(true)
+    if (!selectedOption) {
+      setNotice(`${optionLabel} 옵션을 선택해 주세요.`)
+      return
+    }
+
+    const auth = getStoredAuth()
+    if (!auth?.token) {
+      navigate('/login', {
+        state: {
+          from: location.pathname,
+          message: '바로 구매하려면 로그인해 주세요.',
+        },
+      })
+      return
+    }
+
+    try {
+      navigate('/order', {
+        state: {
+          cart: createBuyNowCart(product, selectedOption, quantity),
+          checkoutMode: 'buy-now',
+          returnTo: location.pathname,
+        },
+      })
+    } catch (checkoutError) {
+      setNotice(checkoutError.message || '바로 구매를 시작하지 못했습니다.')
+    }
   }
 
   async function shareProduct() {
@@ -280,7 +307,7 @@ function ProductDetailPage() {
             </div>
 
             <div className="product-detail-total"><span>총 상품금액</span><strong>{formatPrice(totalPrice)}</strong></div>
-            <div className="product-detail-actions"><button type="button" disabled={isAddingToCart} onClick={() => addToCart(false)}>{isAddingToCart ? '담는 중...' : '장바구니'}</button><button type="button" disabled={isAddingToCart} onClick={buyNow}>{isAddingToCart ? '이동 중...' : '바로 구매'}</button></div>
+            <div className="product-detail-actions"><button type="button" disabled={isAddingToCart} onClick={() => addToCart(false)}>{isAddingToCart ? '담는 중...' : '장바구니'}</button><button type="button" disabled={isAddingToCart} onClick={buyNow}>바로 구매</button></div>
           </div>
         </section>
 

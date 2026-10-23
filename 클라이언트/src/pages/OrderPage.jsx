@@ -31,11 +31,12 @@ function formatPrice(value) {
 function OrderPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const isBuyNowCheckout = location.state?.checkoutMode === 'buy-now'
   const addressInputRef = useRef(null)
   const portOneInitializedRef = useRef('')
   const [auth, setAuth] = useState(getStoredAuth)
   const [cart, setCart] = useState(() => location.state?.cart || null)
-  const [isLoading, setIsLoading] = useState(() => !location.state?.cart)
+  const [isLoading, setIsLoading] = useState(() => !location.state?.cart && !isBuyNowCheckout)
   const [loadError, setLoadError] = useState('')
   const [formError, setFormError] = useState('')
   const [paymentMethod, setPaymentMethod] = useState('card')
@@ -117,6 +118,10 @@ function OrderPage() {
       return undefined
     }
 
+    if (isBuyNowCheckout) {
+      return undefined
+    }
+
     const controller = new AbortController()
 
     async function loadCart() {
@@ -154,7 +159,7 @@ function OrderPage() {
 
     loadCart()
     return () => controller.abort()
-  }, [auth, navigate])
+  }, [auth?.token, auth?.tokenType, isBuyNowCheckout, navigate])
 
   function updateDelivery(event) {
     const { name, value } = event.target
@@ -211,17 +216,19 @@ function OrderPage() {
     if (response.status === 401) clearStoredAuth()
     if (!response.ok) throw new Error(data.message || '주문을 생성하지 못했습니다.')
 
-    try {
-      const clearCartResponse = await fetch(`${API_URL}/api/cart`, {
-        method: 'DELETE',
-        headers: {
-          Accept: 'application/json',
-          Authorization: `${auth.tokenType || 'Bearer'} ${auth.token}`,
-        },
-      })
-      if (clearCartResponse.ok) window.dispatchEvent(new Event('cart:updated'))
-    } catch {
-      // 주문은 이미 생성되었으므로 장바구니 정리 실패가 결과에 영향을 주지 않게 합니다.
+    if (!isBuyNowCheckout) {
+      try {
+        const clearCartResponse = await fetch(`${API_URL}/api/cart`, {
+          method: 'DELETE',
+          headers: {
+            Accept: 'application/json',
+            Authorization: `${auth.tokenType || 'Bearer'} ${auth.token}`,
+          },
+        })
+        if (clearCartResponse.ok) window.dispatchEvent(new Event('cart:updated'))
+      } catch {
+        // 주문은 이미 생성되었으므로 장바구니 정리 실패가 결과에 영향을 주지 않게 합니다.
+      }
     }
 
     navigate(`/order/result/${data._id}`, {
@@ -304,6 +311,10 @@ function OrderPage() {
   const itemAmount = Number(cart?.summary?.currentTotalPrice) || 0
   const discountAmount = 0
   const paymentTotal = itemAmount - discountAmount
+  const returnPath = isBuyNowCheckout
+    ? location.state?.returnTo || (items[0]?.product?._id ? `/products/${items[0].product._id}` : '/')
+    : '/cart'
+  const returnLabel = isBuyNowCheckout ? '상품으로 돌아가기' : '장바구니로 돌아가기'
 
   return (
     <div className="page order-page">
@@ -312,7 +323,7 @@ function OrderPage() {
 
       <main>
         <nav className="order-breadcrumb" aria-label="현재 위치">
-          <Link to="/">홈</Link><span>›</span><Link to="/cart">장바구니</Link><span>›</span><strong>주문/결제</strong>
+          <Link to="/">홈</Link><span>›</span><Link to={returnPath}>{isBuyNowCheckout ? '상품' : '장바구니'}</Link><span>›</span><strong>주문/결제</strong>
         </nav>
 
         <header className="order-heading">
@@ -321,7 +332,7 @@ function OrderPage() {
         </header>
 
         <ol className="order-progress" aria-label="주문 단계">
-          <li className="is-complete"><span aria-hidden="true">✓</span><strong>01 장바구니</strong></li>
+          <li className="is-complete"><span aria-hidden="true">✓</span><strong>01 {isBuyNowCheckout ? '상품 선택' : '장바구니'}</strong></li>
           <li className="is-active" aria-current="step"><span>02</span><strong>주문/결제</strong></li>
           <li><span>03</span><strong>주문 완료</strong></li>
         </ol>
@@ -329,14 +340,14 @@ function OrderPage() {
         {isLoading ? (
           <section className="order-state" role="status"><i /><strong>주문 상품을 불러오고 있습니다.</strong></section>
         ) : loadError && !cart ? (
-          <section className="order-state is-error"><span>!</span><h2>주문 상품을 불러오지 못했어요</h2><p>{loadError}</p><Link to="/cart">장바구니로 돌아가기</Link></section>
+          <section className="order-state is-error"><span>!</span><h2>주문 상품을 불러오지 못했어요</h2><p>{loadError}</p><Link to={returnPath}>{returnLabel}</Link></section>
         ) : !items.length ? (
-          <section className="order-state"><span>0</span><h2>주문할 상품이 없어요</h2><p>장바구니에 상품을 담은 후 다시 시도해 주세요.</p><Link to="/cart">장바구니로 돌아가기</Link></section>
+          <section className="order-state"><span>0</span><h2>주문할 상품이 없어요</h2><p>{isBuyNowCheckout ? '상품을 다시 선택해 주세요.' : '장바구니에 상품을 담은 후 다시 시도해 주세요.'}</p><Link to={returnPath}>{returnLabel}</Link></section>
         ) : (
           <form className="order-layout" onSubmit={handleSubmit}>
             <div className="order-content">
               <section className="order-card order-products" aria-labelledby="order-products-title">
-                <div className="order-card-heading"><h2 id="order-products-title">주문 상품</h2><Link to="/cart">변경</Link></div>
+                <div className="order-card-heading"><h2 id="order-products-title">주문 상품</h2><Link to={returnPath}>변경</Link></div>
                 <div className="order-product-list">
                   {items.map((item) => {
                     const product = item.product || {}
