@@ -6,31 +6,19 @@ import {
   createOutfitBoard,
   createSingleProductReference,
 } from '../utils/tryOnImageProcessing'
+import { getPresetMannequinOutfit } from '../utils/tryOnPresetResults'
+import {
+  deleteTryOnResult,
+  getTryOnResult,
+  putTryOnResult,
+} from '../utils/tryOnResultCache'
 import './VirtualTryOn.css'
 import './CartVirtualTryOn.css'
 
 const DEFAULT_MANNEQUIN_URL = '/products/around/mannequin-front.png'
 const MAX_PHOTO_SIZE = 10 * 1024 * 1024
-const MAX_RESULT_CACHE_ENTRIES = 8
-const RESULT_CACHE_VERSION = 'binary-v2-product-fidelity'
+const RESULT_CACHE_VERSION = 'binary-v3-persistent-cache'
 const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
-const resultBlobCache = new Map()
-
-function getCachedResult(key) {
-  const blob = resultBlobCache.get(key)
-  if (!blob) return null
-  resultBlobCache.delete(key)
-  resultBlobCache.set(key, blob)
-  return blob
-}
-
-function cacheResult(key, blob) {
-  resultBlobCache.delete(key)
-  resultBlobCache.set(key, blob)
-  while (resultBlobCache.size > MAX_RESULT_CACHE_ENTRIES) {
-    resultBlobCache.delete(resultBlobCache.keys().next().value)
-  }
-}
 
 function getProductKey(item) {
   return String(item.product?._id || item.product || item._id)
@@ -78,6 +66,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
   const [aiImageUrl, setAiImageUrl] = useState('')
   const [aiGenerationLabel, setAiGenerationLabel] = useState('')
   const [isAiRevealing, setIsAiRevealing] = useState(false)
+  const [resultSourceMessage, setResultSourceMessage] = useState('')
   const isAiGenerating = Boolean(aiGenerationLabel)
   const objectUrlRef = useRef('')
   const aiImageObjectUrlRef = useRef('')
@@ -94,15 +83,28 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     }
     setAiImageUrl('')
     setIsAiRevealing(false)
+    setResultSourceMessage('')
     activeResultKeyRef.current = ''
   }
 
-  function showAiResult(blob, resultKey) {
+  function showAiResult(blob, resultKey, sourceMessage = '') {
     if (aiImageObjectUrlRef.current) URL.revokeObjectURL(aiImageObjectUrlRef.current)
     aiImageObjectUrlRef.current = URL.createObjectURL(blob)
     activeResultKeyRef.current = resultKey
     setIsAiRevealing(true)
     setAiImageUrl(aiImageObjectUrlRef.current)
+    setResultSourceMessage(sourceMessage)
+  }
+
+  function showPresetResult(imageUrl) {
+    if (aiImageObjectUrlRef.current) {
+      URL.revokeObjectURL(aiImageObjectUrlRef.current)
+      aiImageObjectUrlRef.current = ''
+    }
+    activeResultKeyRef.current = ''
+    setIsAiRevealing(true)
+    setAiImageUrl(imageUrl)
+    setResultSourceMessage('기본 마네킹 사전 생성 결과 · AI 사용량 0회')
   }
 
   useEffect(() => () => {
@@ -274,15 +276,26 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
 
     const resultKey = JSON.stringify([
       RESULT_CACHE_VERSION,
+      String(auth.user?._id || auth.user?.email || 'signed-in'),
       photoCacheKey,
+      singleProduct ? `single:${singleProduct.slot}` : 'outfit',
       outfitProducts
         .map((product) => `${product.slot}:${product.key}:${product.image}`)
         .sort(),
     ])
-    const cachedResult = getCachedResult(resultKey)
+    if (isUsingMannequin && !singleProduct) {
+      const presetResult = getPresetMannequinOutfit(outfitProducts)
+      if (presetResult) {
+        setError('')
+        showPresetResult(presetResult)
+        return
+      }
+    }
+
+    const cachedResult = await getTryOnResult(resultKey)
     if (cachedResult) {
       setError('')
-      showAiResult(cachedResult, resultKey)
+      showAiResult(cachedResult, resultKey, '이 기기에 저장된 결과 재사용 · AI 사용량 0회')
       return
     }
 
@@ -321,8 +334,8 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
       }
       const resultBlob = await response.blob()
       if (!resultBlob.size) throw new Error('AI 결과 이미지를 받지 못했습니다.')
-      cacheResult(resultKey, resultBlob)
-      showAiResult(resultBlob, resultKey)
+      void putTryOnResult(resultKey, resultBlob)
+      showAiResult(resultBlob, resultKey, '새 AI 착장 결과 · 이 기기에 7일간 저장')
     } catch (generationError) {
       setError(generationError.message || '무료 AI 가상 착장에 실패했습니다.')
     } finally {
@@ -361,13 +374,14 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
               }}
               onError={aiImageUrl ? () => {
                 if (activeResultKeyRef.current) {
-                  resultBlobCache.delete(activeResultKeyRef.current)
+                  void deleteTryOnResult(activeResultKeyRef.current)
                 }
                 clearAiResult()
                 setError('AI 결과 이미지를 불러오지 못했습니다. 다시 생성해 주세요.')
               } : undefined}
             />
             {isAiGenerating ? <span className="cart-tryon-ai-loading">무료 Turbo AI가 {aiGenerationLabel}</span> : null}
+            {resultSourceMessage && aiImageUrl ? <span className="cart-tryon-result-status">{resultSourceMessage}</span> : null}
             {!aiImageUrl && !isAiGenerating ? <span className="virtual-tryon-drag-hint">상품을 이곳에 놓으면 해당 상품을 바로 입혀봅니다</span> : null}
           </div>
 
@@ -426,14 +440,14 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
               <button type="button" disabled={isAiGenerating} onClick={() => generateAiOutfit()}>
                 {isAiGenerating ? 'AI 착장 생성 중...' : '코디 한 번에 입어보기'}
               </button>
-              <small>같은 사진과 코디는 페이지를 나가기 전까지 즉시 재사용하며, 새로운 조합만 AI가 생성합니다.</small>
+              <small>기본 마네킹 코디는 사전 생성 결과를 사용하고, 같은 사진과 조합은 이 기기에 7일간 저장해 AI 호출 없이 재사용합니다.</small>
             </div>
 
             <button className="virtual-tryon-reset" type="button" disabled={isAiGenerating} onClick={resetOutfit}>AI 코디 선택 초기화</button>
             {error ? <p className="virtual-tryon-error" role="alert">{error}</p> : null}
             <div className="virtual-tryon-notice cart-tryon-notice">
               <strong>주문 전 마지막으로 확인해 보세요</strong>
-              <p>AI 생성을 누르면 사진과 선택 상품 보드가 생성 처리를 위해 Hugging Face로 전송됩니다. 결과는 AI가 새로 그린 미리보기이며 실제 주름·사이즈·핏과 차이가 있습니다.</p>
+              <p>새로운 개인 사진과 조합만 생성 처리를 위해 Hugging Face로 전송됩니다. 기본 마네킹과 저장된 결과는 외부 AI를 다시 호출하지 않습니다.</p>
             </div>
           </aside>
         </div>
