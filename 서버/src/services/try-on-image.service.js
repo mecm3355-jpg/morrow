@@ -118,6 +118,14 @@ Return one centered full-body image on a transparent background. Change only by 
 }
 
 async function generateTryOnImage({ products, mannequinUrl, clientOrigin, generateImageImpl }) {
+  if (!generateImageImpl && process.env.AI_TRYON_ENABLED !== 'true') {
+    throw createHttpError(
+      503,
+      'AI 가상착장은 비용 사용 동의 후 관리자가 활성화해야 합니다.',
+      'AI_TRYON_DISABLED',
+    );
+  }
+
   if (!generateImageImpl && !process.env.AI_GATEWAY_API_KEY && !process.env.VERCEL_OIDC_TOKEN) {
     throw createHttpError(
       503,

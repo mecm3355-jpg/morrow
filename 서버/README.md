@@ -32,6 +32,7 @@ npm.cmd run dev
 
 - Vercel 배포: 프로젝트 OIDC 인증을 자동으로 사용하므로 별도 OpenAI 키가 필요하지 않습니다.
 - 로컬 실행: `AI_GATEWAY_API_KEY`를 서버 환경변수로 설정하거나 `vercel env pull`로 개발용 OIDC 토큰을 받습니다.
+- `AI_TRYON_ENABLED`: 이미지 생성 비용 사용에 동의한 경우에만 `true`로 설정합니다. 기본값은 비활성화입니다.
 - `AI_TRYON_MODEL`: 기본값 `openai/gpt-image-2.5-sunburst`
 - `AI_TRYON_MANNEQUIN_URL`: 브라우저 Origin을 쓸 수 없는 호출에서 사용할 마네킹 공개 URL(선택)
 - `AI_TRYON_ALLOWED_IMAGE_HOSTS`: Cloudinary 외에 상품 이미지가 저장된 허용 호스트(선택)

@@ -36,6 +36,25 @@ test('상품 이미지는 Cloudinary 또는 허용된 클라이언트 호스트�
   );
 });
 
+test('비용 동의 환경변수가 없으면 실제 AI 생성을 차단한다', async () => {
+  const originalEnabled = process.env.AI_TRYON_ENABLED;
+  delete process.env.AI_TRYON_ENABLED;
+
+  try {
+    await assert.rejects(
+      generateTryOnImage({
+        products: [{ name: '가죽 코트', category: '상의', image: 'https://example.com/coat.png' }],
+        mannequinUrl: 'https://example.com/mannequin.png',
+        clientOrigin: 'https://example.com',
+      }),
+      (error) => error.status === 503 && error.code === 'AI_TRYON_DISABLED',
+    );
+  } finally {
+    if (originalEnabled === undefined) delete process.env.AI_TRYON_ENABLED;
+    else process.env.AI_TRYON_ENABLED = originalEnabled;
+  }
+});
+
 test('마네킹과 상품 이미지를 AI Gateway 모델로 보내고 생성 이미지를 반환한다', async () => {
   const originalFetch = global.fetch;
   const downloadCalls = [];
