@@ -7,12 +7,12 @@ import './CartVirtualTryOn.css'
 const DEFAULT_MANNEQUIN_URL = '/products/around/mannequin-front.png'
 const MAX_PHOTO_SIZE = 10 * 1024 * 1024
 const TRY_ON_PLACEMENTS = {
-  'top-front.png': { x: 50, y: 36.5, scale: 48, rotation: 0, layer: 3 },
-  'cardigan-front.png': { x: 50, y: 35.5, scale: 46, rotation: 0, layer: 3 },
-  'bottom-front.png': { x: 50, y: 72.5, scale: 52, rotation: 0, layer: 2 },
-  'cargo-front.png': { x: 50, y: 72, scale: 56, rotation: 0, layer: 2 },
-  'accessory-front.png': { x: 56, y: 32, scale: 30, rotation: -3, layer: 4 },
-  'cap-front.png': { x: 50, y: 8, scale: 17, rotation: 0, layer: 5 },
+  'top-front.png': { x: 50, y: 37, width: 41, height: 43, rotation: 0, layer: 3 },
+  'cardigan-front.png': { x: 50, y: 38, width: 41, height: 45, rotation: 0, layer: 3 },
+  'bottom-front.png': { x: 50, y: 73, width: 31, height: 49, rotation: 0, layer: 2 },
+  'cargo-front.png': { x: 50, y: 73, width: 32, height: 49, rotation: 0, layer: 2 },
+  'accessory-front.png': { x: 57, y: 38, width: 29, height: 35, rotation: -3, layer: 4 },
+  'cap-front.png': { x: 50, y: 9, width: 18, height: 13, rotation: 0, layer: 5 },
 }
 
 function getProductKey(item) {
@@ -37,12 +37,12 @@ function getInitialPlacement(product) {
   const calibratedPlacement = TRY_ON_PLACEMENTS[imageName]
   if (calibratedPlacement) return calibratedPlacement
 
-  if (category === '하의') return { x: 50, y: 72, scale: 52, rotation: 0, layer: 2 }
+  if (category === '하의') return { x: 50, y: 73, width: 32, height: 49, rotation: 0, layer: 2 }
   if (category === '악세사리' && /(캡|모자|hat|cap)/i.test(name)) {
-    return { x: 50, y: 8, scale: 17, rotation: 0, layer: 5 }
+    return { x: 50, y: 9, width: 18, height: 13, rotation: 0, layer: 5 }
   }
-  if (category === '악세사리') return { x: 56, y: 32, scale: 30, rotation: -3, layer: 4 }
-  return { x: 50, y: 36, scale: 47, rotation: 0, layer: 3 }
+  if (category === '악세사리') return { x: 57, y: 38, width: 29, height: 35, rotation: -3, layer: 4 }
+  return { x: 50, y: 37, width: 41, height: 43, rotation: 0, layer: 3 }
 }
 
 function createPlacements(products) {
@@ -194,6 +194,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
 
   function handleProductPointerDown(event, product) {
     if (event.pointerType === 'mouse' && event.button !== 0) return
+    event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
     productDragRef.current = {
       pointerId: event.pointerId,
@@ -343,12 +344,20 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
                     zIndex: placement.layer,
                     left: `${placement.x}%`,
                     top: `${placement.y}%`,
-                    width: `${placement.scale}%`,
+                    width: `${placement.width}%`,
+                    height: `${placement.height}%`,
                     transform: `translate(-50%, -50%) rotate(${placement.rotation}deg)`,
                   }}
                 />
               )
             })}
+            {isUsingMannequin ? (
+              <>
+                <img className="cart-tryon-occlusion is-head" src={DEFAULT_MANNEQUIN_URL} alt="" aria-hidden="true" draggable="false" />
+                <img className="cart-tryon-occlusion is-left-hand" src={DEFAULT_MANNEQUIN_URL} alt="" aria-hidden="true" draggable="false" />
+                <img className="cart-tryon-occlusion is-right-hand" src={DEFAULT_MANNEQUIN_URL} alt="" aria-hidden="true" draggable="false" />
+              </>
+            ) : null}
             <span className="virtual-tryon-drag-hint">상품을 놓으면 브라우저가 위치와 크기를 무료로 자동 맞춤해요</span>
           </div>
 
@@ -376,7 +385,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
                       onPointerCancel={(event) => finishProductDrag(event, true)}
                       title="마네킹으로 끌어놓아 자동 착장"
                     >
-                      <img src={product.image} alt="" />
+                      <img src={product.image} alt="" draggable="false" onDragStart={(event) => event.preventDefault()} />
                       <span><small>{product.category}</small><strong>{product.name}</strong></span>
                     </button>
                     <button
@@ -407,8 +416,12 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
                 </div>
                 <p><strong>{selectedProduct.name}</strong> 조절</p>
                 <label className="virtual-tryon-range">
-                  <span><strong>상품 크기</strong><output>{selectedPlacement.scale}%</output></span>
-                  <input type="range" min="18" max="110" value={selectedPlacement.scale} onChange={(event) => updatePlacement(selectedProduct.key, { scale: Number(event.target.value) })} />
+                  <span><strong>착용 너비</strong><output>{selectedPlacement.width}%</output></span>
+                  <input type="range" min="10" max="75" value={selectedPlacement.width} onChange={(event) => updatePlacement(selectedProduct.key, { width: Number(event.target.value) })} />
+                </label>
+                <label className="virtual-tryon-range">
+                  <span><strong>착용 길이</strong><output>{selectedPlacement.height}%</output></span>
+                  <input type="range" min="8" max="75" value={selectedPlacement.height} onChange={(event) => updatePlacement(selectedProduct.key, { height: Number(event.target.value) })} />
                 </label>
                 <label className="virtual-tryon-range">
                   <span><strong>기울기</strong><output>{selectedPlacement.rotation}°</output></span>
@@ -428,7 +441,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
         </div>
         {dragPreview ? (
           <div className="cart-tryon-drag-preview" style={{ left: dragPreview.x, top: dragPreview.y }} aria-hidden="true">
-            <img src={dragPreview.product.image} alt="" />
+            <img src={dragPreview.product.image} alt="" draggable="false" />
             <span>마네킹에 놓기</span>
           </div>
         ) : null}

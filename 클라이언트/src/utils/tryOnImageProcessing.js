@@ -1,4 +1,5 @@
 const MAX_PROCESSING_EDGE = 900
+const OPAQUE_ALPHA_THRESHOLD = 12
 
 function getCornerBackground(pixels, width, height) {
   const corners = [
@@ -72,6 +73,31 @@ function removeLightNeutralBackground(pixels, width, height) {
   return true
 }
 
+function findOpaqueBounds(pixels, width, height, alphaThreshold = OPAQUE_ALPHA_THRESHOLD) {
+  let left = width
+  let top = height
+  let right = -1
+  let bottom = -1
+
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      if (pixels[((y * width) + x) * 4 + 3] <= alphaThreshold) continue
+      left = Math.min(left, x)
+      top = Math.min(top, y)
+      right = Math.max(right, x)
+      bottom = Math.max(bottom, y)
+    }
+  }
+
+  if (right < left || bottom < top) return null
+  return {
+    x: left,
+    y: top,
+    width: right - left + 1,
+    height: bottom - top + 1,
+  }
+}
+
 function loadImage(imageUrl) {
   return new Promise((resolve, reject) => {
     const image = new Image()
@@ -102,8 +128,35 @@ async function createBrowserCutout(imageUrl) {
     context.putImageData(imageData, 0, 0)
   }
 
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'))
+  const bounds = findOpaqueBounds(imageData.data, width, height)
+  const outputCanvas = document.createElement('canvas')
+  if (bounds) {
+    const padding = Math.max(2, Math.round(Math.max(bounds.width, bounds.height) * 0.02))
+    const sourceX = Math.max(0, bounds.x - padding)
+    const sourceY = Math.max(0, bounds.y - padding)
+    const sourceRight = Math.min(width, bounds.x + bounds.width + padding)
+    const sourceBottom = Math.min(height, bounds.y + bounds.height + padding)
+    outputCanvas.width = sourceRight - sourceX
+    outputCanvas.height = sourceBottom - sourceY
+    outputCanvas.getContext('2d')?.drawImage(
+      canvas,
+      sourceX,
+      sourceY,
+      outputCanvas.width,
+      outputCanvas.height,
+      0,
+      0,
+      outputCanvas.width,
+      outputCanvas.height,
+    )
+  } else {
+    outputCanvas.width = width
+    outputCanvas.height = height
+    outputCanvas.getContext('2d')?.drawImage(canvas, 0, 0)
+  }
+
+  const blob = await new Promise((resolve) => outputCanvas.toBlob(resolve, 'image/png'))
   return blob ? URL.createObjectURL(blob) : ''
 }
 
-export { createBrowserCutout, removeLightNeutralBackground }
+export { createBrowserCutout, findOpaqueBounds, removeLightNeutralBackground }

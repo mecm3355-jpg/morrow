@@ -3,8 +3,12 @@
 .cart-tryon-stage { min-height: 650px; transition: box-shadow 160ms ease, background 160ms ease; }
 .cart-tryon-stage.is-drag-over { background: linear-gradient(145deg, #efedff, #dcd7f4); box-shadow: inset 0 0 0 4px rgb(81 56 245 / 48%); }
 .cart-tryon-stage.is-drag-over::after { position: absolute; z-index: 20; inset: 22px; display: grid; place-items: center; border: 2px dashed #5138f5; border-radius: 22px; color: #5138f5; background: rgb(255 255 255 / 62%); content: '여기에 놓아 자동 착장'; font-size: 13px; font-weight: 900; pointer-events: none; }
-.cart-tryon-layer { transition: filter 160ms ease; }
+.cart-tryon-layer { max-height: none; object-fit: fill; transition: filter 160ms ease; }
 .cart-tryon-layer.is-selected { filter: drop-shadow(0 14px 18px rgb(25 21 40 / 24%)); }
+.cart-tryon-occlusion { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.cart-tryon-occlusion.is-head { z-index: 4; clip-path: polygon(43% 0, 57% 0, 57% 18%, 55% 22%, 45% 22%, 43% 18%); }
+.cart-tryon-occlusion.is-left-hand { z-index: 6; clip-path: polygon(31% 48%, 41% 48%, 41% 62%, 31% 62%); }
+.cart-tryon-occlusion.is-right-hand { z-index: 6; clip-path: polygon(59% 48%, 69% 48%, 69% 62%, 59% 62%); }
 .cart-tryon-panel { max-height: 650px; overflow-y: auto; }
 .cart-tryon-summary { display: grid; gap: 5px; padding-bottom: 16px; border-bottom: 1px solid #e8e5ec; }
 .cart-tryon-summary small { color: #5138f5; font-size: 8px; font-weight: 900; letter-spacing: .08em; }
@@ -13,9 +17,9 @@
 .cart-tryon-products { display: grid; gap: 7px; margin-top: 14px; }
 .cart-tryon-products > div { display: grid; grid-template-columns: minmax(0, 1fr) 32px; align-items: center; gap: 5px; padding: 4px; border: 1px solid #e8e4ed; border-radius: 11px; background: #faf9fc; }
 .cart-tryon-products > div.is-selected { border-color: #9d8dff; background: #f1efff; box-shadow: 0 0 0 2px rgb(81 56 245 / 8%); }
-.cart-tryon-select { display: grid; min-width: 0; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 9px; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; cursor: grab; touch-action: none; }
+.cart-tryon-select { display: grid; min-width: 0; grid-template-columns: 42px minmax(0, 1fr); align-items: center; gap: 9px; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; cursor: grab; touch-action: none; user-select: none; -webkit-user-select: none; }
 .cart-tryon-select:active { cursor: grabbing; }
-.cart-tryon-select img { width: 42px; height: 42px; padding: 3px; border-radius: 8px; background: #ece9ef; object-fit: contain; }
+.cart-tryon-select img { width: 42px; height: 42px; padding: 3px; border-radius: 8px; background: #ece9ef; object-fit: contain; -webkit-user-drag: none; }
 .cart-tryon-select span { display: grid; min-width: 0; gap: 3px; }
 .cart-tryon-select small { color: #8e8896; font-size: 7px; }
 .cart-tryon-select strong { overflow: hidden; font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
@@ -33,7 +37,7 @@
 .cart-tryon-adjustments .virtual-tryon-range { margin-top: 15px; }
 .cart-tryon-autofit { width: 100%; min-height: 38px; margin-top: 15px; border: 1px solid #d9d2ff; border-radius: 9px; color: #5138f5; background: #f1efff; font-size: 9px; font-weight: 850; cursor: pointer; }
 .cart-tryon-drag-preview { position: fixed; z-index: 10020; display: grid; width: 112px; height: 112px; place-items: center; border: 2px solid #6954ff; border-radius: 18px; background: rgb(255 255 255 / 94%); box-shadow: 0 18px 45px rgb(30 24 65 / 28%); transform: translate(-50%, -50%) scale(1.06); pointer-events: none; }
-.cart-tryon-drag-preview img { width: 82px; height: 82px; object-fit: contain; }
+.cart-tryon-drag-preview img { width: 82px; height: 82px; object-fit: contain; -webkit-user-drag: none; }
 .cart-tryon-drag-preview span { position: absolute; bottom: -12px; padding: 5px 9px; border-radius: 999px; color: #fff; background: #5138f5; font-size: 8px; font-weight: 900; white-space: nowrap; }
 .cart-tryon-notice { margin-top: 18px; }
 

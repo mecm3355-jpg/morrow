@@ -1,7 +1,19 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { removeLightNeutralBackground } from '../src/utils/tryOnImageProcessing.js'
+import { findOpaqueBounds, removeLightNeutralBackground } from '../src/utils/tryOnImageProcessing.js'
+
+test('투명 여백을 제외한 상품 픽셀 경계를 찾는다', () => {
+  const pixels = new Uint8ClampedArray(5 * 4 * 4)
+  for (const index of [7, 8, 12, 13]) pixels[(index * 4) + 3] = 255
+
+  assert.deepEqual(findOpaqueBounds(pixels, 5, 4), {
+    x: 2,
+    y: 1,
+    width: 2,
+    height: 2,
+  })
+})
 
 test('밝은 무채색 모서리 배경은 투명화하고 어두운 상품 픽셀은 보존한다', () => {
   const pixels = new Uint8ClampedArray([
