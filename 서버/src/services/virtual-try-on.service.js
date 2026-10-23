@@ -3,6 +3,7 @@ const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const MAX_RESULT_IMAGE_BYTES = 4 * 1024 * 1024;
 const TRY_ON_TIMEOUT_MS = 4 * 60 * 1000;
 const RESULT_DOWNLOAD_TIMEOUT_MS = 30 * 1000;
+const TRY_ON_SLOTS = new Set(['top', 'bottom', 'accessory', 'headwear']);
 
 function createHttpError(message, status) {
   const error = new Error(message);
@@ -124,7 +125,39 @@ function withTimeout(promise, timeoutMs = TRY_ON_TIMEOUT_MS) {
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timeoutId));
 }
 
-function createTryOnPrompt() {
+function createSingleProductPrompt(slot) {
+  const slotInstructions = {
+    top: 'Replace only the upper-body garment with the exact product from image 2.',
+    bottom: 'Replace only the lower-body garment with the exact product from image 2.',
+    accessory: 'Add the exact bag from image 2 and wear it naturally on one shoulder or carry it naturally.',
+    headwear: 'Add the exact cap or hat from image 2 and fit it naturally on the head.',
+  };
+
+  return [
+    'Image 1 is the full-body person or mannequin to preserve.',
+    'Image 2 is one exact product reference, not a style inspiration.',
+    slotInstructions[slot],
+    'Perform a strict product-preserving virtual try-on.',
+    'Copy the exact product identity: color, material, texture, pattern, silhouette, proportions, length, neckline, sleeves, seams, buttons, pockets, straps, hardware, logos, and all visible details.',
+    'Do not redesign, simplify, recolor, substitute, or invent a similar product.',
+    'Preserve every non-target garment and accessory already visible in image 1.',
+    'Preserve the subject identity, face, hair, hands, pose, body proportions, framing, and background.',
+    'Render realistic fit, cloth draping, wrinkles, lighting, shadows, and body occlusion while keeping the referenced product recognizable and faithful.',
+    'Return one clean final full-body image only. Do not show the reference image, labels, a collage, or a before-and-after comparison.',
+  ].join(' ');
+}
+
+function createTryOnPrompt({ mode = 'outfit', slot } = {}) {
+  if (mode === 'single') {
+    if (!TRY_ON_SLOTS.has(slot)) {
+      throw createHttpError('개별 착장 상품 종류가 올바르지 않습니다.', 400);
+    }
+    return createSingleProductPrompt(slot);
+  }
+  if (mode !== 'outfit') {
+    throw createHttpError('가상 착장 생성 방식이 올바르지 않습니다.', 400);
+  }
+
   return [
     'Image 1 is the full-body person or mannequin to dress.',
     'Image 2 is an outfit board whose occupied cells are labeled TOP, BOTTOM, BAG, and CAP.',
@@ -150,18 +183,21 @@ async function connectToSpace() {
 }
 
 async function generateVirtualTryOn(
-  { personImage, outfitBoardImage },
+  { personImage, outfitBoardImage, mode = 'outfit', slot },
   dependencies = {},
 ) {
   if (process.env.HF_VIRTUAL_TRYON_ENABLED === 'false') {
     throw createHttpError('무료 AI 가상 착장이 현재 비활성화되어 있습니다.', 503);
   }
 
+  const prompt = createTryOnPrompt({ mode, slot });
   const personBuffer = decodeImageDataUrl(personImage, '인물');
-  const outfitBoardBuffer = decodeImageDataUrl(outfitBoardImage, '코디 보드');
+  const outfitBoardBuffer = decodeImageDataUrl(
+    outfitBoardImage,
+    mode === 'single' ? '상품 참조' : '코디 보드',
+  );
   const connect = dependencies.connectToSpace || connectToSpace;
   const { client, handleFile } = await connect();
-  const prompt = createTryOnPrompt();
   const downloadImage = dependencies.downloadGeneratedImage || downloadGeneratedImage;
 
   try {

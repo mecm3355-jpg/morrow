@@ -50,6 +50,25 @@ async function createAiPersonReference(imageUrl) {
   return canvas.toDataURL('image/jpeg', 0.9)
 }
 
+async function createSingleProductReference(product) {
+  const image = await loadImage(product.image)
+  const canvas = document.createElement('canvas')
+  canvas.width = AI_REFERENCE_WIDTH
+  canvas.height = AI_REFERENCE_HEIGHT
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('상품 참조 이미지를 준비하지 못했습니다.')
+
+  context.fillStyle = '#ffffff'
+  context.fillRect(0, 0, canvas.width, canvas.height)
+  drawContainedImage(context, image, {
+    x: 0,
+    y: 0,
+    width: canvas.width,
+    height: canvas.height,
+  }, 48)
+  return canvas.toDataURL('image/jpeg', 0.95)
+}
+
 async function createOutfitBoard(products) {
   const productsBySlot = new Map(products.map((product) => [product.slot, product]))
   const canvas = document.createElement('canvas')
@@ -93,4 +112,5 @@ async function createOutfitBoard(products) {
 export {
   createAiPersonReference,
   createOutfitBoard,
+  createSingleProductReference,
 }

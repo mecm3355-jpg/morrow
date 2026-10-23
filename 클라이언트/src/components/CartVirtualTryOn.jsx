@@ -4,6 +4,7 @@ import { getStoredAuth } from '../utils/authStorage'
 import {
   createAiPersonReference,
   createOutfitBoard,
+  createSingleProductReference,
 } from '../utils/tryOnImageProcessing'
 import './VirtualTryOn.css'
 import './CartVirtualTryOn.css'
@@ -11,7 +12,7 @@ import './CartVirtualTryOn.css'
 const DEFAULT_MANNEQUIN_URL = '/products/around/mannequin-front.png'
 const MAX_PHOTO_SIZE = 10 * 1024 * 1024
 const MAX_RESULT_CACHE_ENTRIES = 8
-const RESULT_CACHE_VERSION = 'binary-v1'
+const RESULT_CACHE_VERSION = 'binary-v2-product-fidelity'
 const API_URL = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '')
 const resultBlobCache = new Map()
 
@@ -288,12 +289,14 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     generationInFlightRef.current = true
     setAiGenerationLabel(singleProduct
       ? `${singleProduct.name} 상품을 입히는 중...`
-      : '선택한 전체 코디를 한 벌로 입히는 중...')
+      : '선택한 코디를 한 번에 입히는 중...')
     setError('')
     try {
       const [personImage, outfitBoardImage] = await Promise.all([
         createAiPersonReference(photoUrl),
-        createOutfitBoard(outfitProducts),
+        singleProduct
+          ? createSingleProductReference(singleProduct)
+          : createOutfitBoard(outfitProducts),
       ])
       const response = await fetch(`${API_URL}/api/virtual-try-on`, {
         method: 'POST',
@@ -301,7 +304,12 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
           'Content-Type': 'application/json',
           Authorization: `${auth.tokenType || 'Bearer'} ${auth.token}`,
         },
-        body: JSON.stringify({ personImage, outfitBoardImage }),
+        body: JSON.stringify({
+          personImage,
+          outfitBoardImage,
+          mode: singleProduct ? 'single' : 'outfit',
+          slot: singleProduct?.slot,
+        }),
       })
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
@@ -333,9 +341,9 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
         <header>
           <div>
             <span>FINAL OUTFIT CHECK</span>
-            <h2 id="cart-tryon-title">장바구니 전체 코디 가상 착장</h2>
+            <h2 id="cart-tryon-title">선택한 코디 입어보기</h2>
           </div>
-          <button ref={closeButtonRef} type="button" aria-label="전체 코디 가상 착장 닫기" onClick={onClose}>×</button>
+          <button ref={closeButtonRef} type="button" aria-label="선택한 코디 입어보기 닫기" onClick={onClose}>×</button>
         </header>
 
         <div className="virtual-tryon-body cart-tryon-body">
@@ -346,7 +354,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
             <img
               className="virtual-tryon-photo"
               src={aiImageUrl || photoUrl}
-              alt={aiImageUrl ? 'AI가 생성한 전체 코디 착장' : (isUsingMannequin ? '가상 착장용 마네킹' : '선택한 착장 사진')}
+              alt={aiImageUrl ? 'AI가 생성한 선택 코디 착장' : (isUsingMannequin ? '가상 착장용 마네킹' : '선택한 착장 사진')}
               onLoad={() => {
                 if (!aiImageUrl) return
                 window.setTimeout(() => setIsAiRevealing(false), 80)
@@ -367,7 +375,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
             <div className="cart-tryon-summary">
               <small>장바구니 코디</small>
               <strong>{products.length}개 상품으로 코디 조합하기</strong>
-              <p>드래그해 놓으면 해당 상품을 바로 입혀보고, 클릭 선택 후 아래 버튼을 누르면 전체 코디를 생성합니다.</p>
+              <p>드래그해 놓으면 해당 상품을 바로 입혀보고, 클릭으로 고른 상품은 아래 버튼으로 한 번에 입어봅니다.</p>
             </div>
 
             <div className="cart-tryon-products" aria-label="착장 상품 목록">
@@ -414,9 +422,9 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
 
             <div className="cart-tryon-ai-box">
               <span aria-hidden="true">AI</span>
-              <p><strong>상의 · 하의 · 가방 · 모자 전체 착장</strong><small>Turbo AI가 선택한 상품을 한 번에 몸에 맞춰 생성합니다.</small></p>
+              <p><strong>선택한 코디 한 번에 입어보기</strong><small>Turbo AI가 선택한 상의·하의·가방·모자를 함께 입혀줍니다.</small></p>
               <button type="button" disabled={isAiGenerating} onClick={() => generateAiOutfit()}>
-                {isAiGenerating ? '무료 Turbo AI 생성 중...' : '선택한 전체 코디 AI 생성'}
+                {isAiGenerating ? 'AI 착장 생성 중...' : '코디 한 번에 입어보기'}
               </button>
               <small>같은 사진과 코디는 페이지를 나가기 전까지 즉시 재사용하며, 새로운 조합만 AI가 생성합니다.</small>
             </div>

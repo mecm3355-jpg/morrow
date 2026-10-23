@@ -221,7 +221,7 @@ function CartPage() {
               <div className="cart-outfit-check">
                 <span><Icon name="tryOn" size={19} /></span>
                 <div><small>FINAL OUTFIT CHECK</small><strong>담은 상품을 한 번에 입어보세요</strong><p>상의·하의·악세사리를 마네킹에 함께 배치해 주문 전 코디를 확인할 수 있어요.</p></div>
-                <button type="button" onClick={() => setIsOutfitTryOnOpen(true)}>전체 코디 가상 착장</button>
+                <button type="button" onClick={() => setIsOutfitTryOnOpen(true)}>선택한 코디 입어보기</button>
               </div>
               {error ? <div className="cart-error" role="alert">{error}</div> : null}
               {summary.hasPriceChanges ? <div className="cart-price-notice"><Icon name="refresh" size={16} />가격이 변경된 상품이 있습니다. 현재 가격을 확인해 주세요.</div> : null}
@@ -243,7 +243,7 @@ function CartPage() {
               <h2>결제 예정 금액</h2>
               <dl><div><dt>상품 금액</dt><dd>{formatPrice(summary.currentTotalPrice)}</dd></div></dl>
               <div className="cart-summary-total"><span>총 결제 금액</span><strong>{formatPrice(paymentTotal)}</strong></div>
-              <div className="cart-fit-reminder"><Icon name="tryOn" size={17} /><span><strong>전체 코디 확인 완료하셨나요?</strong>장바구니 상품을 한 마네킹에 함께 입어볼 수 있어요.</span></div>
+              <div className="cart-fit-reminder"><Icon name="tryOn" size={17} /><span><strong>선택한 코디를 입어보셨나요?</strong>장바구니 상품을 한 번에 조합해 확인할 수 있어요.</span></div>
               <button type="button" disabled={isCheckingOut} onClick={checkout}>{isCheckingOut ? '가격 확인 중...' : `${summary.totalQuantity}개 상품 구매하기`}</button>
               <p><Icon name="shield" size={17} />결제 직전 상품 가격을 다시 확인합니다.</p>
               <Link to="/#products">쇼핑 계속하기 <span>›</span></Link>

@@ -57,6 +57,24 @@ test('AI 지시문에 상의, 하의, 가방, 모자 슬롯을 모두 포함한�
   assert.match(prompt, /Do not show the outfit board/);
 });
 
+test('개별 상품 착장은 상품 디자인 보존과 대상 영역만 변경하도록 지시한다', () => {
+  const topPrompt = createTryOnPrompt({ mode: 'single', slot: 'top' });
+  assert.match(topPrompt, /exact product reference/);
+  assert.match(topPrompt, /Replace only the upper-body garment/);
+  assert.match(topPrompt, /Do not redesign, simplify, recolor, substitute, or invent/);
+  assert.match(topPrompt, /Preserve every non-target garment and accessory/);
+
+  const bagPrompt = createTryOnPrompt({ mode: 'single', slot: 'accessory' });
+  assert.match(bagPrompt, /Add the exact bag/);
+});
+
+test('개별 상품 착장은 지원하지 않는 상품 종류를 거절한다', () => {
+  assert.throws(
+    () => createTryOnPrompt({ mode: 'single', slot: 'shoes' }),
+    (error) => error.status === 400,
+  );
+});
+
 test('이미지가 아닌 데이터 URL은 거절한다', () => {
   assert.throws(
     () => decodeImageDataUrl('data:text/plain;base64,dGVzdA==', '인물'),
