@@ -7,6 +7,7 @@ const cartRouter = require('./routes/cart.routes');
 const orderRouter = require('./routes/order.routes');
 const productRouter = require('./routes/product.routes');
 const userRouter = require('./routes/user.routes');
+const virtualTryOnRouter = require('./routes/virtual-try-on.routes');
 const connectDatabase = require('./config/db');
 
 const app = express();
@@ -54,6 +55,7 @@ app.use(helmet({
   strictTransportSecurity: isDevelopment ? false : undefined,
 }));
 app.use(cors(corsOptions));
+app.use('/api/virtual-try-on', express.json({ limit: '8mb' }));
 app.use(express.json({ limit: '256kb' }));
 app.use(express.urlencoded({ extended: true, limit: '256kb' }));
 
@@ -75,6 +77,7 @@ app.use('/api/cart', cartRouter);
 app.use('/api/orders', orderRouter);
 app.use('/api/products', productRouter);
 app.use('/api/users', userRouter);
+app.use('/api/virtual-try-on', virtualTryOnRouter);
 
 app.use((req, res) => {
   res.status(404).json({ message: '요청한 API를 찾을 수 없습니다.' });
