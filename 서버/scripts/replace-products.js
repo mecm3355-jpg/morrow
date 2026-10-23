@@ -68,12 +68,12 @@ const products = [
 ];
 
 async function replaceProducts() {
-  if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI 환경변수가 설정되지 않았습니다.');
+  if (!process.env.MONGODB_ATLAS_URI) throw new Error('MONGODB_ATLAS_URI 환경변수가 설정되지 않았습니다.');
   if (!process.argv.includes('--confirm=replace-all')) {
     throw new Error('전체 상품 교체를 확인하려면 --confirm=replace-all 옵션이 필요합니다.');
   }
 
-  await mongoose.connect(process.env.MONGODB_URI);
+  await mongoose.connect(process.env.MONGODB_ATLAS_URI);
   const previousProducts = await Product.find().select('_id sku name').lean();
   let createdProducts = [];
 

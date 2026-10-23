@@ -199,7 +199,7 @@ def card_layer(scene: int, p: float, tick: int) -> Image.Image:
         arrow(d, 833 + dx, 424, 920 + dx, PURPLE)
         rounded(d, (944 + dx, 300, 1165 + dx, 550), 24, "#f2efff", "#c9bbff", 3)
         text(d, (1054 + dx, 350), "Vercel", 28, NAVY, True, "mm")
-        text(d, (1054 + dx, 416), "MONGODB_URI", 23, PURPLE, True, "mm")
+        text(d, (1054 + dx, 416), "MONGODB_ATLAS_URI", 23, PURPLE, True, "mm")
         text(d, (1054 + dx, 476), "환경변수 반영", 21, MUTED, True, "mm")
 
     elif scene == 3:
