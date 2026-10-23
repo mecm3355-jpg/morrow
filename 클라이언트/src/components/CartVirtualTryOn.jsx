@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { getStoredAuth } from '../utils/authStorage'
+import { createBrowserCutout } from '../utils/tryOnImageProcessing'
 import './VirtualTryOn.css'
 import './CartVirtualTryOn.css'
 
-const API_URL = import.meta.env.VITE_API_URL || ''
 const DEFAULT_MANNEQUIN_URL = '/products/around/mannequin-front.png'
 const MAX_PHOTO_SIZE = 10 * 1024 * 1024
 const TRY_ON_PLACEMENTS = {
@@ -47,11 +46,8 @@ function getInitialPlacement(product) {
 }
 
 function createPlacements(products) {
-  const occupiedSlots = new Set()
   return products.reduce((result, product) => {
-    const visible = !occupiedSlots.has(product.slot)
-    if (visible) occupiedSlots.add(product.slot)
-    result[product.key] = { ...getInitialPlacement(product), visible }
+    result[product.key] = { ...getInitialPlacement(product), visible: false }
     return result
   }, {})
 }
@@ -77,28 +73,45 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
   const [error, setError] = useState('')
   const [isDragOver, setIsDragOver] = useState(false)
   const [dragPreview, setDragPreview] = useState(null)
-  const [aiComposite, setAiComposite] = useState(null)
-  const [isGeneratingAi, setIsGeneratingAi] = useState(false)
+  const [cutoutImages, setCutoutImages] = useState({})
   const objectUrlRef = useRef('')
+  const cutoutUrlsRef = useRef([])
   const dragRef = useRef(null)
   const productDragRef = useRef(null)
   const suppressClickRef = useRef(false)
   const closeButtonRef = useRef(null)
-  const aiRequestControllerRef = useRef(null)
-  const aiCompositeCacheRef = useRef(new Map())
 
   const selectedProduct = products.find((product) => product.key === selectedId) || products[0]
   const selectedPlacement = selectedProduct ? placements[selectedProduct.key] : null
-  const compositedProductIds = new Set(aiComposite?.productIds || [])
-  const stagePhotoUrl = aiComposite?.imageDataUrl || photoUrl
-  const selectedUsesComposite = Boolean(
-    aiComposite && selectedProduct && compositedProductIds.has(selectedProduct.key),
-  )
 
   useEffect(() => () => {
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
-    aiRequestControllerRef.current?.abort()
+    cutoutUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
   }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    Promise.all(products.map(async (product) => {
+      try {
+        const cutoutUrl = await createBrowserCutout(product.image)
+        return [product.key, cutoutUrl]
+      } catch {
+        return [product.key, '']
+      }
+    })).then((entries) => {
+      const nextUrls = entries.map(([, url]) => url).filter(Boolean)
+      if (cancelled) {
+        nextUrls.forEach((url) => URL.revokeObjectURL(url))
+        return
+      }
+      cutoutUrlsRef.current.forEach((url) => URL.revokeObjectURL(url))
+      cutoutUrlsRef.current = nextUrls
+      setCutoutImages(Object.fromEntries(entries))
+    })
+
+    return () => { cancelled = true }
+  }, [products])
 
   useEffect(() => {
     if (!isOpen) return undefined
@@ -117,15 +130,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     }
   }, [isOpen, onClose])
 
-  function clearAiComposite() {
-    aiRequestControllerRef.current?.abort()
-    aiRequestControllerRef.current = null
-    setAiComposite(null)
-    setIsGeneratingAi(false)
-  }
-
   function updatePlacement(productId, values) {
-    clearAiComposite()
     setPlacements((current) => ({
       ...current,
       [productId]: { ...current[productId], ...values },
@@ -133,7 +138,6 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
   }
 
   function showProduct(product) {
-    clearAiComposite()
     setSelectedId(product.key)
     setPlacements((current) => Object.fromEntries(
       products.map((candidate) => [
@@ -150,7 +154,6 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
 
   function fitProduct(product) {
     const fittedPlacement = getInitialPlacement(product)
-    clearAiComposite()
     setSelectedId(product.key)
     setPlacements((current) => Object.fromEntries(
       products.map((candidate) => [
@@ -166,7 +169,6 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
   }
 
   function toggleProduct(product) {
-    clearAiComposite()
     if (placements[product.key]?.visible) {
       updatePlacement(product.key, { visible: false })
       return
@@ -220,73 +222,6 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     setDragPreview({ product: drag.product, x: event.clientX, y: event.clientY })
   }
 
-  function getOutfitProductsForDrop(droppedProduct) {
-    return products.filter((product) => (
-      product.key === droppedProduct.key
-      || (product.slot !== droppedProduct.slot && placements[product.key]?.visible)
-    ))
-  }
-
-  async function generateAiTryOn(outfitProducts) {
-    const auth = getStoredAuth()
-    if (!auth?.token) {
-      setError('AI 가상착장을 사용하려면 다시 로그인해 주세요.')
-      return
-    }
-
-    const productIds = outfitProducts.map((product) => product.key)
-    const cacheKey = [...productIds].sort().join('|')
-    const cachedImage = aiCompositeCacheRef.current.get(cacheKey)
-    if (cachedImage) {
-      setAiComposite({ imageDataUrl: cachedImage, productIds })
-      setError('')
-      return
-    }
-
-    aiRequestControllerRef.current?.abort()
-    const controller = new AbortController()
-    aiRequestControllerRef.current = controller
-    setAiComposite(null)
-    setIsGeneratingAi(true)
-    setError('')
-
-    try {
-      const response = await fetch(`${API_URL}/api/products/try-on/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `${auth.tokenType || 'Bearer'} ${auth.token}`,
-        },
-        body: JSON.stringify({ productIds }),
-        signal: controller.signal,
-      })
-      const data = await response.json().catch(() => ({}))
-      if (!response.ok) throw new Error(data.message || 'AI 가상착장 이미지를 생성하지 못했습니다.')
-      if (!data.imageDataUrl) throw new Error('AI가 생성한 이미지를 받지 못했습니다.')
-
-      aiCompositeCacheRef.current.set(cacheKey, data.imageDataUrl)
-      setAiComposite({ imageDataUrl: data.imageDataUrl, productIds: data.productIds || productIds })
-    } catch (requestError) {
-      if (requestError.name !== 'AbortError') {
-        setError(requestError.message || 'AI 가상착장 이미지를 생성하지 못했습니다.')
-      }
-    } finally {
-      if (aiRequestControllerRef.current === controller) {
-        aiRequestControllerRef.current = null
-        setIsGeneratingAi(false)
-      }
-    }
-  }
-
-  function applyProductWithAi(product) {
-    fitProduct(product)
-    if (isUsingMannequin) {
-      void generateAiTryOn(getOutfitProductsForDrop(product))
-    } else {
-      setError('AI 생성은 기본 마네킹에서만 지원합니다. 내 사진에서는 수동으로 위치를 조절해 주세요.')
-    }
-  }
-
   function finishProductDrag(event, cancelled = false) {
     const drag = productDragRef.current
     if (!drag || drag.pointerId !== event.pointerId) return
@@ -296,7 +231,8 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     }
     if (drag.active) {
       if (!cancelled && isPointOverStage(event.clientX, event.clientY)) {
-        applyProductWithAi(drag.product)
+        fitProduct(drag.product)
+        setError('')
       }
       suppressClickRef.current = true
       window.setTimeout(() => { suppressClickRef.current = false }, 0)
@@ -341,7 +277,6 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
 
     if (objectUrlRef.current) URL.revokeObjectURL(objectUrlRef.current)
     objectUrlRef.current = URL.createObjectURL(file)
-    clearAiComposite()
     setPhotoUrl(objectUrlRef.current)
     setPhotoName(file.name)
     setIsUsingMannequin(false)
@@ -356,12 +291,10 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     setPhotoUrl(DEFAULT_MANNEQUIN_URL)
     setPhotoName('기본 마네킹')
     setIsUsingMannequin(true)
-    clearAiComposite()
     setError('')
   }
 
   function resetOutfit() {
-    clearAiComposite()
     setPlacements(createPlacements(products))
     setSelectedId(products[0]?.key || '')
   }
@@ -387,17 +320,17 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
           >
             <img
               className="virtual-tryon-photo"
-              src={stagePhotoUrl}
-              alt={aiComposite ? 'AI가 마네킹 체형에 맞춰 생성한 전체 착장' : (isUsingMannequin ? '가상 착장용 마네킹' : '선택한 착장 사진')}
+              src={photoUrl}
+              alt={isUsingMannequin ? '가상 착장용 마네킹' : '선택한 착장 사진'}
             />
             {products.map((product) => {
               const placement = placements[product.key]
-              if (!placement?.visible || (aiComposite && compositedProductIds.has(product.key))) return null
+              if (!placement?.visible) return null
               return (
                 <img
                   key={product.key}
                   className={`virtual-tryon-product cart-tryon-layer${selectedId === product.key ? ' is-selected' : ''}`}
-                  src={product.image}
+                  src={cutoutImages[product.key] || product.image}
                   alt=""
                   data-product-id={product.key}
                   data-slot={product.slot}
@@ -416,21 +349,14 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
                 />
               )
             })}
-            {isGeneratingAi ? (
-              <div className="cart-tryon-ai-loading" role="status">
-                <span aria-hidden="true" />
-                <strong>AI가 마네킹 체형에 맞춰 착장을 생성하고 있어요</strong>
-                <small>상품 수에 따라 잠시 시간이 걸릴 수 있습니다.</small>
-              </div>
-            ) : null}
-            <span className="virtual-tryon-drag-hint">상품을 마네킹에 놓으면 AI가 새로운 착장 이미지를 생성해요</span>
+            <span className="virtual-tryon-drag-hint">상품을 놓으면 브라우저가 위치와 크기를 무료로 자동 맞춤해요</span>
           </div>
 
           <aside className="virtual-tryon-panel cart-tryon-panel">
             <div className="cart-tryon-summary">
               <small>장바구니 코디</small>
               <strong>{products.length}개 상품으로 코디 조합하기</strong>
-              <p>상품을 마네킹에 드래그하면 현재 코디를 분석해 새로운 AI 착장 이미지를 생성해요.</p>
+              <p>상품을 드래그하면 원본 이미지의 배경을 정리하고 카테고리별 착용 위치에 자동 배치해요.</p>
             </div>
 
             <div className="cart-tryon-products" aria-label="착장 상품 목록">
@@ -475,27 +401,20 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
 
             {selectedProduct && selectedPlacement ? (
               <div className="cart-tryon-adjustments">
-                {selectedUsesComposite ? (
-                  <div className="cart-tryon-composite-status">
-                    <span aria-hidden="true">✓</span>
-                    <p><strong>{selectedProduct.name}</strong>을 포함한 새 착장을 AI가 생성했어요.<small>상품 이미지와 현재 코디를 함께 분석한 미리보기이며 실제 디자인·핏과 차이가 있을 수 있습니다.</small></p>
-                  </div>
-                ) : (
-                  <>
-                    <p><strong>{selectedProduct.name}</strong> 조절</p>
-                    <label className="virtual-tryon-range">
-                      <span><strong>상품 크기</strong><output>{selectedPlacement.scale}%</output></span>
-                      <input type="range" min="18" max="110" value={selectedPlacement.scale} onChange={(event) => updatePlacement(selectedProduct.key, { scale: Number(event.target.value) })} />
-                    </label>
-                    <label className="virtual-tryon-range">
-                      <span><strong>기울기</strong><output>{selectedPlacement.rotation}°</output></span>
-                      <input type="range" min="-30" max="30" value={selectedPlacement.rotation} onChange={(event) => updatePlacement(selectedProduct.key, { rotation: Number(event.target.value) })} />
-                    </label>
-                    <button className="cart-tryon-autofit" type="button" disabled={isGeneratingAi} onClick={() => applyProductWithAi(selectedProduct)}>
-                      {isGeneratingAi ? 'AI 착장 생성 중...' : 'AI 가상착장 생성'}
-                    </button>
-                  </>
-                )}
+                <div className="cart-tryon-free-status">
+                  <span aria-hidden="true">₩0</span>
+                  <p><strong>브라우저 무료 자동 합성</strong><small>서버 전송 없이 이 기기에서 원본 이미지의 배경과 크기를 처리합니다.</small></p>
+                </div>
+                <p><strong>{selectedProduct.name}</strong> 조절</p>
+                <label className="virtual-tryon-range">
+                  <span><strong>상품 크기</strong><output>{selectedPlacement.scale}%</output></span>
+                  <input type="range" min="18" max="110" value={selectedPlacement.scale} onChange={(event) => updatePlacement(selectedProduct.key, { scale: Number(event.target.value) })} />
+                </label>
+                <label className="virtual-tryon-range">
+                  <span><strong>기울기</strong><output>{selectedPlacement.rotation}°</output></span>
+                  <input type="range" min="-30" max="30" value={selectedPlacement.rotation} onChange={(event) => updatePlacement(selectedProduct.key, { rotation: Number(event.target.value) })} />
+                </label>
+                <button className="cart-tryon-autofit" type="button" onClick={() => fitProduct(selectedProduct)}>무료 자동 맞춤</button>
               </div>
             ) : null}
 
@@ -503,7 +422,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
             {error ? <p className="virtual-tryon-error" role="alert">{error}</p> : null}
             <div className="virtual-tryon-notice cart-tryon-notice">
               <strong>주문 전 마지막으로 확인해 보세요</strong>
-              <p>간편 미리보기이므로 실제 핏·색감과 차이가 있을 수 있습니다. 사진은 서버로 전송되지 않습니다.</p>
+              <p>원본 이미지를 겹쳐 보는 간편 미리보기로 실제 주름·핏과 차이가 있습니다. 사진과 상품 이미지는 서버로 전송되지 않습니다.</p>
             </div>
           </aside>
         </div>

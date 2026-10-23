@@ -1,10 +1,6 @@
 const mongoose = require('mongoose');
 
 const Product = require('../models/product.model');
-const {
-  MAX_OUTFIT_PRODUCTS,
-  generateTryOnImage,
-} = require('../services/try-on-image.service');
 
 const productFields = ['sku', 'name', 'price', 'category', 'image', 'spinImages', 'description'];
 const requiredProductFields = ['sku', 'name', 'price', 'category', 'image'];
@@ -133,53 +129,6 @@ async function getProductById(req, res) {
   return res.status(200).json(product);
 }
 
-async function generateProductTryOn(req, res) {
-  const requestedIds = Array.isArray(req.body?.productIds)
-    ? [...new Set(req.body.productIds.map((id) => String(id)))]
-    : [];
-
-  if (requestedIds.length === 0 || requestedIds.length > MAX_OUTFIT_PRODUCTS) {
-    return res.status(400).json({
-      message: `AI 가상착장은 1개에서 ${MAX_OUTFIT_PRODUCTS}개 상품까지 지원합니다.`,
-    });
-  }
-
-  if (requestedIds.some((id) => !isValidProductId(id))) {
-    return res.status(400).json({ message: '유효하지 않은 상품이 포함되어 있습니다.' });
-  }
-
-  const products = await Product.find({ _id: { $in: requestedIds } })
-    .select('name category image')
-    .lean();
-  const productsById = new Map(products.map((product) => [String(product._id), product]));
-  const orderedProducts = requestedIds.map((id) => productsById.get(id)).filter(Boolean);
-
-  if (orderedProducts.length !== requestedIds.length) {
-    return res.status(404).json({ message: '가상착장에 사용할 상품을 찾을 수 없습니다.' });
-  }
-
-  const clientOrigin = req.get('origin') || '';
-  const mannequinUrl = process.env.AI_TRYON_MANNEQUIN_URL
-    || (clientOrigin ? new URL('/products/around/mannequin-front.png', clientOrigin).toString() : '');
-
-  if (!mannequinUrl) {
-    return res.status(503).json({
-      message: 'AI 가상착장용 마네킹 이미지 주소가 설정되지 않았습니다.',
-    });
-  }
-
-  const result = await generateTryOnImage({
-    products: orderedProducts,
-    mannequinUrl,
-    clientOrigin,
-  });
-
-  return res.status(200).json({
-    ...result,
-    productIds: requestedIds,
-  });
-}
-
 async function updateProduct(req, res) {
   if (!isValidProductId(req.params.id)) {
     return res.status(400).json({ message: '유효하지 않은 상품 ID입니다.' });
@@ -237,7 +186,6 @@ module.exports = {
   getProducts,
   getAllProducts,
   getProductById,
-  generateProductTryOn,
   updateProduct,
   deleteProduct,
   handleProductError,
