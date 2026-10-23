@@ -14,9 +14,8 @@ async function connectDatabase() {
   }
 
   if (!connectionPromise) {
-    connectionPromise = mongoose.connect(mongoUri).catch((error) => {
+    connectionPromise = mongoose.connect(mongoUri).finally(() => {
       connectionPromise = null;
-      throw error;
     });
   }
 
