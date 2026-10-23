@@ -15,7 +15,6 @@ test('AI 가상 착장은 사람과 전체 코디 보드 두 장으로 요청한
   const client = {
     async predict(endpoint, payload) {
       calls.push({ endpoint, payload });
-      if (endpoint === '/prepare_request') return { data: [] };
       return { data: [{ url: 'https://example.com/generated.png' }] };
     },
   };
@@ -31,10 +30,11 @@ test('AI 가상 착장은 사람과 전체 코디 보드 두 장으로 요청한
     timeoutMs: 1000,
   });
 
-  assert.equal(calls.length, 2);
-  assert.equal(calls[0].endpoint, '/prepare_request');
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].endpoint, '/generate');
   assert.equal(calls[0].payload.input_images.length, 2);
-  assert.equal(calls[1].endpoint, '/generate_request');
+  assert.equal(calls[0].payload.resolution, 1024);
+  assert.equal(calls[0].payload.aspect_ratio, '3:4');
   assert.deepEqual(result.supports, ['top', 'bottom', 'bag', 'cap']);
   assert.equal(result.imageUrl, 'https://example.com/generated.png');
 });
@@ -44,6 +44,8 @@ test('AI 지시문에 상의, 하의, 가방, 모자 슬롯을 모두 포함한�
   for (const label of ['TOP', 'BOTTOM', 'BAG', 'CAP']) {
     assert.match(prompt, new RegExp(label));
   }
+  assert.match(prompt, /photorealistic virtual try-on/);
+  assert.match(prompt, /Do not show the outfit board/);
 });
 
 test('이미지가 아닌 데이터 URL은 거절한다', () => {

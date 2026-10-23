@@ -1,4 +1,4 @@
-const DEFAULT_SPACE_ID = 'Qwen/Qwen-Image-2.1';
+const DEFAULT_SPACE_ID = 'hugging-apps/qwen-qwen-image-2-1-turbo';
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 const TRY_ON_TIMEOUT_MS = 4 * 60 * 1000;
 
@@ -55,7 +55,9 @@ function createTryOnPrompt() {
     'Dress the subject in image 1 with every item shown in the occupied labeled cells of image 2.',
     'Make the top and bottom naturally fitted to the body, put the cap on the head, and wear the bag naturally on one shoulder.',
     'Make every supplied item clearly visible. Do not omit, duplicate, recolor, or replace any item.',
+    'Render a photorealistic virtual try-on with natural cloth draping, wrinkles, seams, lighting, shadows, and body occlusion.',
     'Preserve the subject identity, face, hair, hands, full-body front pose, body proportions, framing, and background.',
+    'Return one clean final full-body image of the dressed subject only. Do not show the outfit board, labels, product cutouts, a collage, or a before-and-after comparison.',
   ].join(' ');
 }
 
@@ -85,28 +87,15 @@ async function generateVirtualTryOn(
   const { client, handleFile } = await connect();
   const prompt = createTryOnPrompt();
 
-  await withTimeout(client.predict('/prepare_request', {
+  const result = await withTimeout(client.predict('/generate', {
+    prompt,
     input_images: [
       { image: handleFile(personBuffer), caption: null },
       { image: handleFile(outfitBoardBuffer), caption: null },
     ],
-    original_prompt: prompt,
-    enable_extend: false,
-    custom_size: false,
-    quality: 'speed',
     seed: 42,
-    randomize_seed: false,
-  }), dependencies.timeoutMs);
-
-  const result = await withTimeout(client.predict('/generate_request', {
-    original_prompt: prompt,
-    enable_extend: false,
-    custom_size: false,
-    log_dir: './generation_logs_paper_case',
-    seed: 42,
-    height: 1536,
-    width: 2688,
-    negative_prompt: ' ',
+    resolution: 1024,
+    aspect_ratio: '3:4',
   }), dependencies.timeoutMs);
   const imageUrl = getGeneratedImageUrl(result);
 

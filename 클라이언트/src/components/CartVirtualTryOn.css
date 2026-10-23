@@ -1,16 +1,13 @@
 .cart-tryon-dialog { width: min(1080px, 100%); }
 .cart-tryon-body { grid-template-columns: minmax(0, 1.35fr) minmax(310px, .65fr); }
 .cart-tryon-stage { min-height: 650px; transition: box-shadow 160ms ease, background 160ms ease; }
+.cart-tryon-stage .virtual-tryon-photo { transition: filter 1s ease, opacity 1s ease, transform 1s ease; }
+.cart-tryon-stage.is-generating .virtual-tryon-photo,
+.cart-tryon-stage.is-ai-revealing .virtual-tryon-photo { filter: blur(18px); opacity: .68; transform: scale(1.025); }
 .cart-tryon-stage.is-ai-result { background: #f3f4f6; }
 .cart-tryon-stage.is-ai-result .virtual-tryon-photo { width: 100%; height: 100%; object-fit: contain; }
 .cart-tryon-stage.is-drag-over { background: linear-gradient(145deg, #efedff, #dcd7f4); box-shadow: inset 0 0 0 4px rgb(81 56 245 / 48%); }
-.cart-tryon-stage.is-drag-over::after { position: absolute; z-index: 20; inset: 22px; display: grid; place-items: center; border: 2px dashed #5138f5; border-radius: 22px; color: #5138f5; background: rgb(255 255 255 / 62%); content: '여기에 놓아 자동 착장'; font-size: 13px; font-weight: 900; pointer-events: none; }
-.cart-tryon-layer { max-height: none; object-fit: fill; transition: filter 160ms ease; }
-.cart-tryon-layer.is-selected { filter: drop-shadow(0 14px 18px rgb(25 21 40 / 24%)); }
-.cart-tryon-occlusion { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none; -webkit-user-drag: none; }
-.cart-tryon-occlusion.is-head { z-index: 4; clip-path: polygon(43% 0, 57% 0, 57% 18%, 55% 22%, 45% 22%, 43% 18%); }
-.cart-tryon-occlusion.is-left-hand { z-index: 6; clip-path: polygon(31% 48%, 41% 48%, 41% 62%, 31% 62%); }
-.cart-tryon-occlusion.is-right-hand { z-index: 6; clip-path: polygon(59% 48%, 69% 48%, 69% 62%, 59% 62%); }
+.cart-tryon-stage.is-drag-over::after { position: absolute; z-index: 20; inset: 22px; display: grid; place-items: center; border: 2px dashed #5138f5; border-radius: 22px; color: #5138f5; background: rgb(255 255 255 / 62%); content: '여기에 놓아 AI 코디 선택'; font-size: 13px; font-weight: 900; pointer-events: none; }
 .cart-tryon-panel { max-height: 650px; overflow-y: auto; }
 .cart-tryon-summary { display: grid; gap: 5px; padding-bottom: 16px; border-bottom: 1px solid #e8e5ec; }
 .cart-tryon-summary small { color: #5138f5; font-size: 8px; font-weight: 900; letter-spacing: .08em; }
@@ -36,17 +33,7 @@
 .cart-tryon-ai-box button { grid-column: 1 / -1; min-height: 40px; border: 0; border-radius: 9px; color: #fff; background: #5138f5; font-size: 9px; font-weight: 900; cursor: pointer; }
 .cart-tryon-ai-box button:disabled { opacity: .58; cursor: wait; }
 .cart-tryon-ai-box > small { grid-column: 1 / -1; color: #7f788d; font-size: 7px; line-height: 1.45; }
-.cart-tryon-ai-loading { position: absolute; z-index: 30; inset: 0; display: grid; place-items: center; padding: 30px; color: #fff; background: rgb(24 18 58 / 76%); font-size: 12px; font-weight: 900; text-align: center; }
-.cart-tryon-adjustments { margin-top: 18px; padding-top: 16px; border-top: 1px solid #ebe8ef; }
-.cart-tryon-adjustments > p { margin: 0; color: #736d7b; font-size: 9px; }
-.cart-tryon-adjustments > p strong { color: #29253a; }
-.cart-tryon-free-status { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; padding: 11px; border: 1px solid #ccebdc; border-radius: 10px; color: #17603f; background: #f0fbf6; }
-.cart-tryon-free-status > span { display: grid; min-width: 34px; height: 34px; place-items: center; border-radius: 50%; color: #fff; background: #20855a; font-size: 9px; font-weight: 950; }
-.cart-tryon-free-status p { display: grid; gap: 2px; margin: 0; }
-.cart-tryon-free-status strong { font-size: 10px; }
-.cart-tryon-free-status small { color: #4f7465; font-size: 8px; font-weight: 500; }
-.cart-tryon-adjustments .virtual-tryon-range { margin-top: 15px; }
-.cart-tryon-autofit { width: 100%; min-height: 38px; margin-top: 15px; border: 1px solid #d9d2ff; border-radius: 9px; color: #5138f5; background: #f1efff; font-size: 9px; font-weight: 850; cursor: pointer; }
+.cart-tryon-ai-loading { position: absolute; z-index: 30; inset: 0; display: grid; place-items: center; padding: 30px; color: #fff; background: linear-gradient(145deg, rgb(36 27 85 / 42%), rgb(81 56 245 / 25%)); font-size: 12px; font-weight: 900; text-align: center; text-shadow: 0 2px 10px rgb(20 14 55 / 70%); backdrop-filter: blur(2px); }
 .cart-tryon-drag-preview { position: fixed; z-index: 10020; display: grid; width: 112px; height: 112px; place-items: center; border: 2px solid #6954ff; border-radius: 18px; background: rgb(255 255 255 / 94%); box-shadow: 0 18px 45px rgb(30 24 65 / 28%); transform: translate(-50%, -50%) scale(1.06); pointer-events: none; }
 .cart-tryon-drag-preview img { width: 82px; height: 82px; object-fit: contain; -webkit-user-drag: none; }
 .cart-tryon-drag-preview span { position: absolute; bottom: -12px; padding: 5px 9px; border-radius: 999px; color: #fff; background: #5138f5; font-size: 8px; font-weight: 900; white-space: nowrap; }
@@ -56,4 +43,8 @@
   .cart-tryon-body { grid-template-columns: 1fr; }
   .cart-tryon-stage { min-height: min(66vh, 560px); }
   .cart-tryon-panel { max-height: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-tryon-stage .virtual-tryon-photo { transition: none; }
 }
