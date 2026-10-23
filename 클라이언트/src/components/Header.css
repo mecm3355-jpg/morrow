@@ -150,12 +150,14 @@
   animation: header-dropdown-curtain 180ms ease-out both;
 }
 
+.header-user-dropdown a,
 .header-user-dropdown button {
+  display: block;
   width: 100%;
   padding: 9px 11px;
   border: 0;
   border-radius: 8px;
-  color: #a73c4c;
+  color: #5d576b;
   background: transparent;
   text-align: left;
   font-size: 11px;
@@ -163,7 +165,16 @@
   cursor: pointer;
 }
 
-.header-user-dropdown button:hover {
+.header-user-dropdown a:hover {
+  color: #5138f5;
+  background: #f3f1ff;
+}
+
+.header-user-dropdown .is-logout {
+  color: #a73c4c;
+}
+
+.header-user-dropdown .is-logout:hover {
   background: #fff0f2;
 }
 

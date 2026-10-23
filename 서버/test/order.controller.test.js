@@ -8,6 +8,7 @@ const {
   createOrder,
   getPaymentConfiguration,
   getOrders,
+  getAdminOrders,
   getOrderById,
   updateOrder,
   deleteOrder,
@@ -328,6 +329,115 @@ test('주문 목록은 로그인한 사용자의 주문만 조회한다', async 
     assert.deepEqual(countFilter, { user: userId });
     assert.deepEqual(findFilter, { user: userId });
     assert.equal(response.body.orders.length, 1);
+  } finally {
+    Order.countDocuments = originals.countDocuments;
+    Order.find = originals.find;
+  }
+});
+
+test('주문 목록은 요청한 주문 상태로 필터링한다', async () => {
+  const userId = new mongoose.Types.ObjectId().toString();
+  const originals = { countDocuments: Order.countDocuments, find: Order.find };
+  let receivedFilter;
+
+  Order.countDocuments = async (filter) => {
+    receivedFilter = filter;
+    return 1;
+  };
+  Order.find = () => ({
+    sort() { return this; },
+    skip() { return this; },
+    limit() { return this; },
+    populate: async () => [{ orderNumber: 'ORD-SHIPPED', status: 'shipped' }],
+  });
+
+  const response = createResponse();
+
+  try {
+    await getOrders({ auth: { userId }, query: { status: 'shipped' } }, response);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(receivedFilter, { user: userId, status: 'shipped' });
+    assert.equal(response.body.orders[0].status, 'shipped');
+  } finally {
+    Order.countDocuments = originals.countDocuments;
+    Order.find = originals.find;
+  }
+});
+
+test('주문 목록은 모델에 없는 주문 상태를 거절한다', async () => {
+  const response = createResponse();
+
+  await getOrders({
+    auth: { userId: new mongoose.Types.ObjectId().toString() },
+    query: { status: 'unknown' },
+  }, response);
+
+  assert.equal(response.statusCode, 400);
+  assert.equal(response.body.message, '유효하지 않은 주문 상태입니다.');
+});
+
+test('관리자 주문 목록은 모든 사용자의 주문과 주문자 정보를 조회한다', async () => {
+  const originals = { countDocuments: Order.countDocuments, find: Order.find };
+  let countFilter;
+  let findFilter;
+  let populatePaths;
+
+  Order.countDocuments = async (filter) => {
+    countFilter = filter;
+    return 2;
+  };
+  Order.find = (filter) => {
+    findFilter = filter;
+    return {
+      sort() { return this; },
+      skip() { return this; },
+      limit() { return this; },
+      async populate(paths) {
+        populatePaths = paths;
+        return [{ orderNumber: 'ORD-ADMIN-1' }, { orderNumber: 'ORD-ADMIN-2' }];
+      },
+    };
+  };
+
+  const response = createResponse();
+
+  try {
+    await getAdminOrders({ query: {} }, response);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(countFilter, {});
+    assert.deepEqual(findFilter, {});
+    assert.deepEqual(populatePaths, [
+      { path: 'items.product', select: 'sku name price category image' },
+      { path: 'user', select: 'name email' },
+    ]);
+    assert.equal(response.body.orders.length, 2);
+  } finally {
+    Order.countDocuments = originals.countDocuments;
+    Order.find = originals.find;
+  }
+});
+
+test('관리자 주문 목록도 주문 상태로 필터링한다', async () => {
+  const originals = { countDocuments: Order.countDocuments, find: Order.find };
+  let receivedFilter;
+
+  Order.countDocuments = async (filter) => {
+    receivedFilter = filter;
+    return 0;
+  };
+  Order.find = () => ({
+    sort() { return this; },
+    skip() { return this; },
+    limit() { return this; },
+    populate: async () => [],
+  });
+
+  const response = createResponse();
+
+  try {
+    await getAdminOrders({ query: { status: 'preparing' } }, response);
+    assert.equal(response.statusCode, 200);
+    assert.deepEqual(receivedFilter, { status: 'preparing' });
   } finally {
     Order.countDocuments = originals.countDocuments;
     Order.find = originals.find;

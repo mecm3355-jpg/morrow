@@ -185,8 +185,8 @@ function OrderResultPage() {
           ) : null}
 
           <div className="order-result-actions">
-            <Link className="is-primary" to={isSuccess || paymentApproved ? '/' : '/order'}>
-              {isSuccess ? '쇼핑 계속하기' : (paymentApproved ? '홈으로 이동' : '다시 시도하기')}
+            <Link className="is-primary" to={isSuccess ? '/orders' : (paymentApproved ? '/' : '/order')}>
+              {isSuccess ? '주문 목록 보기' : (paymentApproved ? '홈으로 이동' : '다시 시도하기')}
             </Link>
             {receiptUrl
               ? <a className="is-secondary" href={receiptUrl} target="_blank" rel="noreferrer">결제 영수증</a>

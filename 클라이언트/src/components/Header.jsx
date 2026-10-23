@@ -122,7 +122,12 @@ function Header({ user = null, onLogout = null }) {
               <span><strong>{user.name || '회원'}</strong>님 환영합니다</span>
               <span className={`header-greeting-arrow ${isUserMenuOpen ? 'open' : ''}`} aria-hidden="true">▾</span>
             </button>
-            {isUserMenuOpen ? <div className="header-user-dropdown" id="header-user-dropdown" role="menu"><button type="button" role="menuitem" onClick={handleLogout}>로그아웃</button></div> : null}
+            {isUserMenuOpen ? (
+              <div className="header-user-dropdown" id="header-user-dropdown" role="menu">
+                <Link to="/orders" role="menuitem" onClick={() => setIsUserMenuOpen(false)}>내 주문 목록</Link>
+                <button className="is-logout" type="button" role="menuitem" onClick={handleLogout}>로그아웃</button>
+              </div>
+            ) : null}
           </div>
         ) : <Link className="header-login" to="/login">로그인</Link>}
       </div>

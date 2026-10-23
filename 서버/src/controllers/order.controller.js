@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 
 const Order = require('../models/order.model');
 const Product = require('../models/product.model');
+const { ORDER_STATUSES } = Order;
 
 const ORDERS_PER_PAGE = 10;
 const MAX_ORDERS_PER_PAGE = 50;
@@ -285,8 +286,17 @@ async function createOrder(req, res) {
 async function getOrders(req, res) {
   const requestedPage = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
   const requestedLimit = Number.parseInt(req.query.limit, 10) || ORDERS_PER_PAGE;
+  const requestedStatus = typeof req.query.status === 'string'
+    ? req.query.status.trim().toLowerCase()
+    : '';
+
+  if (requestedStatus && !ORDER_STATUSES.includes(requestedStatus)) {
+    return res.status(400).json({ message: '유효하지 않은 주문 상태입니다.' });
+  }
+
   const limit = Math.min(Math.max(requestedLimit, 1), MAX_ORDERS_PER_PAGE);
   const filter = { user: req.auth.userId };
+  if (requestedStatus) filter.status = requestedStatus;
   const total = await Order.countDocuments(filter);
   const totalPages = Math.max(1, Math.ceil(total / limit));
   const page = Math.min(requestedPage, totalPages);
@@ -295,6 +305,44 @@ async function getOrders(req, res) {
     .skip((page - 1) * limit)
     .limit(limit)
     .populate('items.product', PRODUCT_FIELDS);
+
+  return res.status(200).json({
+    orders,
+    pagination: {
+      page,
+      pageSize: limit,
+      total,
+      totalPages,
+      hasPreviousPage: page > 1,
+      hasNextPage: page < totalPages,
+    },
+  });
+}
+
+async function getAdminOrders(req, res) {
+  const requestedPage = Math.max(Number.parseInt(req.query.page, 10) || 1, 1);
+  const requestedLimit = Number.parseInt(req.query.limit, 10) || ORDERS_PER_PAGE;
+  const requestedStatus = typeof req.query.status === 'string'
+    ? req.query.status.trim().toLowerCase()
+    : '';
+
+  if (requestedStatus && !ORDER_STATUSES.includes(requestedStatus)) {
+    return res.status(400).json({ message: '유효하지 않은 주문 상태입니다.' });
+  }
+
+  const limit = Math.min(Math.max(requestedLimit, 1), MAX_ORDERS_PER_PAGE);
+  const filter = requestedStatus ? { status: requestedStatus } : {};
+  const total = await Order.countDocuments(filter);
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const page = Math.min(requestedPage, totalPages);
+  const orders = await Order.find(filter)
+    .sort({ createdAt: -1 })
+    .skip((page - 1) * limit)
+    .limit(limit)
+    .populate([
+      { path: 'items.product', select: PRODUCT_FIELDS },
+      { path: 'user', select: 'name email' },
+    ]);
 
   return res.status(200).json({
     orders,
@@ -415,6 +463,7 @@ module.exports = {
   createOrder,
   getPaymentConfiguration,
   getOrders,
+  getAdminOrders,
   getOrderById,
   updateOrder,
   deleteOrder,

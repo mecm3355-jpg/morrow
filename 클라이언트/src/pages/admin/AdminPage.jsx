@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getStoredAuth } from '../utils/authStorage'
+import { getStoredAuth } from '../../utils/authStorage'
 import './AdminPage.css'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
 
 const navigation = [
   { icon: 'grid', label: '대시보드' },
-  { icon: 'cart', label: '주문 관리' },
+  { icon: 'cart', label: '주문 관리', path: '/admin/orders' },
   { icon: 'boxes', label: '상품 관리', path: '/admin/products' },
   { icon: 'users', label: '고객 관리' },
   { icon: 'tag', label: '프로모션' },

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { getStoredAuth } from '../utils/authStorage'
-import { getPaginationItems } from '../utils/pagination'
+import { getStoredAuth } from '../../utils/authStorage'
+import { getPaginationItems } from '../../utils/pagination'
 import './ProductListPage.css'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -21,7 +21,7 @@ const INITIAL_SUMMARY = {
 
 const navigation = [
   { icon: 'dashboard', label: '대시보드', path: '/admin' },
-  { icon: 'order', label: '주문 관리' },
+  { icon: 'order', label: '주문 관리', path: '/admin/orders' },
   { icon: 'product', label: '상품 관리', path: '/admin/products', active: true },
   { icon: 'user', label: '고객 관리' },
   { icon: 'megaphone', label: '프로모션' },
