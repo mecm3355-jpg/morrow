@@ -75,12 +75,13 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
   const [isDragOver, setIsDragOver] = useState(false)
   const [dragPreview, setDragPreview] = useState(null)
   const [aiImageUrl, setAiImageUrl] = useState('')
-  const [isAiGenerating, setIsAiGenerating] = useState(false)
   const [aiGenerationLabel, setAiGenerationLabel] = useState('')
   const [isAiRevealing, setIsAiRevealing] = useState(false)
+  const isAiGenerating = Boolean(aiGenerationLabel)
   const objectUrlRef = useRef('')
   const aiImageObjectUrlRef = useRef('')
   const activeResultKeyRef = useRef('')
+  const generationInFlightRef = useRef(false)
   const productDragRef = useRef(null)
   const suppressClickRef = useRef(false)
   const closeButtonRef = useRef(null)
@@ -125,15 +126,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     }
   }, [isOpen, onClose])
 
-  function updateSelection(productId, visible) {
-    clearAiResult()
-    setPlacements((current) => ({
-      ...current,
-      [productId]: { visible },
-    }))
-  }
-
-  function showProduct(product) {
+  function selectProduct(product) {
     clearAiResult()
     setSelectedId(product.key)
     setPlacements((current) => Object.fromEntries(
@@ -149,32 +142,20 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     ))
   }
 
-  function fitProduct(product) {
-    clearAiResult()
-    setSelectedId(product.key)
-    setPlacements((current) => Object.fromEntries(
-      products.map((candidate) => [
-        candidate.key,
-        candidate.key === product.key
-          ? { visible: true }
-          : {
-              ...current[candidate.key],
-              visible: candidate.slot === product.slot ? false : current[candidate.key]?.visible,
-            },
-      ]),
-    ))
-  }
-
   function toggleProduct(product) {
-    clearAiResult()
     if (placements[product.key]?.visible) {
-      updateSelection(product.key, false)
+      clearAiResult()
+      setPlacements((current) => ({
+        ...current,
+        [product.key]: { visible: false },
+      }))
       return
     }
-    showProduct(product)
+    selectProduct(product)
   }
 
   function handleProductPointerDown(event, product) {
+    if (generationInFlightRef.current) return
     if (event.pointerType === 'mouse' && event.button !== 0) return
     event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -214,9 +195,9 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     }
     if (drag.active) {
       if (!cancelled && isPointOverStage(event.clientX, event.clientY)) {
-        fitProduct(drag.product)
+        selectProduct(drag.product)
         setError('')
-        void generateAiOutfit([drag.product])
+        void generateAiOutfit(drag.product)
       }
       suppressClickRef.current = true
       window.setTimeout(() => { suppressClickRef.current = false }, 0)
@@ -228,7 +209,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
 
   function handleProductClick(product) {
     if (suppressClickRef.current) return
-    showProduct(product)
+    selectProduct(product)
   }
 
   function handlePhotoChange(event) {
@@ -273,8 +254,8 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     setSelectedId(products[0]?.key || '')
   }
 
-  async function generateAiOutfit(productsOverride) {
-    if (isAiGenerating) return
+  async function generateAiOutfit(singleProduct = null) {
+    if (generationInFlightRef.current) return
 
     const auth = getStoredAuth()
     if (!auth) {
@@ -282,18 +263,9 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
       return
     }
 
-    const isSingleProductTryOn = Array.isArray(productsOverride)
-    const selectedBySlot = new Map()
-    if (!isSingleProductTryOn) {
-      products.forEach((product) => {
-        if (placements[product.key]?.visible && !selectedBySlot.has(product.slot)) {
-          selectedBySlot.set(product.slot, product)
-        }
-      })
-    }
-    const outfitProducts = isSingleProductTryOn
-      ? productsOverride.slice(0, 1)
-      : [...selectedBySlot.values()]
+    const outfitProducts = singleProduct
+      ? [singleProduct]
+      : products.filter((product) => placements[product.key]?.visible)
     if (!outfitProducts.length) {
       setError('먼저 착용할 상품을 하나 이상 선택해 주세요.')
       return
@@ -313,9 +285,9 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
       return
     }
 
-    setIsAiGenerating(true)
-    setAiGenerationLabel(isSingleProductTryOn
-      ? `${outfitProducts[0].name} 상품을 입히는 중...`
+    generationInFlightRef.current = true
+    setAiGenerationLabel(singleProduct
+      ? `${singleProduct.name} 상품을 입히는 중...`
       : '선택한 전체 코디를 한 벌로 입히는 중...')
     setError('')
     try {
@@ -346,7 +318,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
     } catch (generationError) {
       setError(generationError.message || '무료 AI 가상 착장에 실패했습니다.')
     } finally {
-      setIsAiGenerating(false)
+      generationInFlightRef.current = false
       setAiGenerationLabel('')
     }
   }
@@ -435,10 +407,10 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
             </div>
 
             <label className="virtual-tryon-change-photo cart-tryon-photo-control">
-              <input type="file" accept="image/*" onChange={handlePhotoChange} />
+              <input type="file" accept="image/*" disabled={isAiGenerating} onChange={handlePhotoChange} />
               {isUsingMannequin ? '내 사진으로 바꾸기' : '사진 바꾸기'} <small>{photoName}</small>
             </label>
-            {!isUsingMannequin ? <button className="virtual-tryon-mannequin" type="button" onClick={useDefaultMannequin}>기본 마네킹으로 돌아가기</button> : null}
+            {!isUsingMannequin ? <button className="virtual-tryon-mannequin" type="button" disabled={isAiGenerating} onClick={useDefaultMannequin}>기본 마네킹으로 돌아가기</button> : null}
 
             <div className="cart-tryon-ai-box">
               <span aria-hidden="true">AI</span>
@@ -449,7 +421,7 @@ function CartVirtualTryOn({ items, isOpen, onClose }) {
               <small>같은 사진과 코디는 페이지를 나가기 전까지 즉시 재사용하며, 새로운 조합만 AI가 생성합니다.</small>
             </div>
 
-            <button className="virtual-tryon-reset" type="button" onClick={resetOutfit}>AI 코디 선택 초기화</button>
+            <button className="virtual-tryon-reset" type="button" disabled={isAiGenerating} onClick={resetOutfit}>AI 코디 선택 초기화</button>
             {error ? <p className="virtual-tryon-error" role="alert">{error}</p> : null}
             <div className="virtual-tryon-notice cart-tryon-notice">
               <strong>주문 전 마지막으로 확인해 보세요</strong>

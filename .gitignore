@@ -14,6 +14,10 @@
 /output/
 /tmp/
 
+# Generated virtual try-on video working files (keep only the final video)
+/artifacts/virtual-tryon-demo/*
+!/artifacts/virtual-tryon-demo/morrow-virtual-tryon-demo.mp4
+
 # Operating system files
 .DS_Store
 Thumbs.db
